@@ -68,18 +68,22 @@ class RsamApiService
 
         $role = ($existing && $existing->role === 'admin') ? 'admin' : 'user';
 
-        return User::updateOrCreate(
-            ['email' => $email],
-            [
-                'rsam_user_id' => $remoteUser['id'] ?? null,
-                'name' => $remoteUser['name'] ?? 'User',
-                'unit' => $remoteUser['unit'] ?? null,
-                'sub_unit' => $remoteUser['sub_unit'] ?? null,
-                'role' => $role,
-                'avatar_url' => $remoteUser['avatar_url'] ?? null,
-                'is_active' => true,
-            ]
-        );
+        $userData = [
+            'rsam_user_id' => $remoteUser['id'] ?? null,
+            'name' => $remoteUser['name'] ?? 'User',
+            'unit' => $remoteUser['unit'] ?? null,
+            'sub_unit' => $remoteUser['sub_unit'] ?? null,
+            'role' => $role,
+            'avatar_url' => $remoteUser['avatar_url'] ?? null,
+            'is_active' => true,
+        ];
+
+        // simpan password hash dari RSAM biar user bisa login di kedua web dengan password yang sama
+        if (!empty($remoteUser['password'])) {
+            $userData['password'] = $remoteUser['password'];
+        }
+
+        return User::updateOrCreate(['email' => $email], $userData);
     }
 
     // tarik daftar user dari rsam

@@ -35,35 +35,29 @@ class LoginController extends Controller
         $password = $request->password;
         $remember = $request->boolean('remember');
 
-        // cek admin lokal dulu
-        $localAdmin = User::where('email', $email)->where('role', 'admin')->first();
-
-        if ($localAdmin) {
-            if (Auth::attempt(['email' => $email, 'password' => $password], $remember)) {
-                $request->session()->regenerate();
-                return redirect()->intended(route('admin.dashboard'));
-            }
-
-            throw ValidationException::withMessages([
-                'password' => 'Kata sandi akun administrator tidak sesuai.',
-            ]);
+        // 1. Coba login lokal dulu (cepat & bisa untuk admin maupun user yang sudah ter-sync)
+        if (Auth::attempt(['email' => $email, 'password' => $password], $remember)) {
+            $request->session()->regenerate();
+            $user = Auth::user();
+            return redirect()->intended($user->isAdmin() ? route('admin.dashboard') : route('dashboard'));
         }
 
-        // kalau user biasa, verifikasi ke api helpdesk rsam
+        // 2. Jika akun belum ada di lokal atau password lokal gagal (misal user baru ganti password di RSAM):
+        // Fallback verifikasi ke server Helpdesk RSAM API
         $rsamAuth = RsamApiService::verifyCredentials($email, $password);
 
         if ($rsamAuth['success'] && !empty($rsamAuth['user'])) {
-            // sync data akun user lokal
+            // sync akun lokal beserta password hash terbaru dari RSAM
             $user = RsamApiService::syncOrCreateUser($rsamAuth['user']);
 
             Auth::login($user, $remember);
             $request->session()->regenerate();
 
-            return redirect()->intended(route('dashboard'));
+            return redirect()->intended($user->isAdmin() ? route('admin.dashboard') : route('dashboard'));
         }
 
         throw ValidationException::withMessages([
-            'email' => $rsamAuth['message'] ?: 'Email atau kata sandi tidak cocok dengan akun pengguna Helpdesk RSAM.',
+            'email' => $rsamAuth['message'] ?: 'Email atau kata sandi tidak cocok dengan akun Helpdesk RSAM.',
         ]);
     }
 
