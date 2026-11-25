@@ -11,9 +11,7 @@ use Inertia\Response;
 
 class MasterUrgencyController extends Controller
 {
-    /**
-     * Tampilkan daftar master urgensi / prioritas tiket
-     */
+
     public function index(): Response
     {
         $urgencies = TicketUrgency::withCount('tickets')
@@ -25,9 +23,6 @@ class MasterUrgencyController extends Controller
         ]);
     }
 
-    /**
-     * Tambah master urgensi baru
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
@@ -53,9 +48,6 @@ class MasterUrgencyController extends Controller
         return redirect()->back()->with('success', 'Master urgensi / prioritas tiket berhasil ditambahkan.');
     }
 
-    /**
-     * Update master urgensi
-     */
     public function update(Request $request, TicketUrgency $urgency): RedirectResponse
     {
         $request->validate([
@@ -81,9 +73,6 @@ class MasterUrgencyController extends Controller
         return redirect()->back()->with('success', 'Master urgensi / prioritas tiket berhasil diperbarui.');
     }
 
-    /**
-     * Hapus atau nonaktifkan master urgensi
-     */
     public function destroy(TicketUrgency $urgency): RedirectResponse
     {
         if ($urgency->tickets()->count() > 0) {

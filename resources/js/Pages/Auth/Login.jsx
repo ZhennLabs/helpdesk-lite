@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 
 export default function Login({ status }) {
     const [showPassword, setShowPassword] = useState(false);
 
+    const getCsrfToken = () => {
+        if (typeof document !== 'undefined') {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+        return '';
+    };
+
     const { data, setData, post, processing, errors, reset } = useForm({
+        _token: getCsrfToken(),
         email: '',
         password: '',
         remember: true,
@@ -13,6 +21,7 @@ export default function Login({ status }) {
 
     const submit = (e) => {
         e.preventDefault();
+        data._token = getCsrfToken();
         post('/login', {
             onFinish: () => reset('password'),
         });
@@ -22,7 +31,6 @@ export default function Login({ status }) {
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-teal-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
             <Head title="Masuk ke Helpdesk" />
 
-            {/* Background Decorative Blobs */}
             <div className="absolute top-0 -left-40 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-0 -right-40 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -43,13 +51,14 @@ export default function Login({ status }) {
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0 relative z-10">
                 <div className="bg-white/95 backdrop-blur-xl py-8 px-6 sm:px-10 shadow-2xl rounded-3xl border border-white/20">
-                    {/* Status Alert */}
+
                     {status && (
                         <div className="mb-4 text-xs font-semibold text-emerald-600 bg-emerald-50 p-3 rounded-xl border border-emerald-200">
                             {status}
                         </div>
                     )}
                     <form onSubmit={submit} className="space-y-4">
+                        <input type="hidden" name="_token" value={data._token} />
                         <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1.5">
                                 Alamat Email

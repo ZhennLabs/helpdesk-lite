@@ -3,16 +3,17 @@ import { Head, useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import DataTable from '@/Components/DataTable';
+import Tooltip from '@/Components/Tooltip';
 import { Icon } from '@iconify/react';
+import { toast } from 'sonner';
 
 export default function MasterUsers({ admins = [], regularUsers = [] }) {
-    const [activeTab, setActiveTab] = useState('admins'); // 'admins' | 'users'
+    const [activeTab, setActiveTab] = useState('admins');
     const [isCreateAdminModalOpen, setIsCreateAdminModalOpen] = useState(false);
     const [editingAdmin, setEditingAdmin] = useState(null);
     const [deletingAdmin, setDeletingAdmin] = useState(null);
     const [isSyncing, setIsSyncing] = useState(false);
 
-    // Form Tambah Admin Baru
     const {
         data: createData,
         setData: setCreateData,
@@ -28,7 +29,6 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
         sub_unit: 'Pusat Kontrol',
     });
 
-    // Form Edit Admin
     const {
         data: editData,
         setData: setEditData,
@@ -51,6 +51,11 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
             onSuccess: () => {
                 setIsCreateAdminModalOpen(false);
                 resetCreateForm();
+                toast.success('Akun Administrator baru berhasil ditambahkan!');
+            },
+            onError: (errs) => {
+                const first = Object.values(errs)[0];
+                toast.error(first || 'Gagal menambahkan administrator.');
             },
         });
     };
@@ -74,6 +79,11 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
             onSuccess: () => {
                 setEditingAdmin(null);
                 resetEditForm();
+                toast.success('Data administrator berhasil diperbarui!');
+            },
+            onError: (errs) => {
+                const first = Object.values(errs)[0];
+                toast.error(first || 'Gagal memperbarui administrator.');
             },
         });
     };
@@ -81,7 +91,13 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
     const handleConfirmDelete = () => {
         if (!deletingAdmin) return;
         router.delete(`/admin/master/users/${deletingAdmin.id}`, {
-            onSuccess: () => setDeletingAdmin(null),
+            onSuccess: () => {
+                setDeletingAdmin(null);
+                toast.success('Administrator berhasil dihapus.');
+            },
+            onError: () => {
+                toast.error('Gagal menghapus administrator.');
+            },
         });
     };
 
@@ -97,12 +113,10 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
         );
     };
 
-    // User list normalization
     const userList = useMemo(() => {
         return Array.isArray(regularUsers) ? regularUsers : regularUsers?.data || [];
     }, [regularUsers]);
 
-    // Columns Definition for Tab 1: Administrator Lokal
     const adminColumns = [
         {
             key: 'no',
@@ -191,29 +205,30 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
             align: 'right',
             sortable: false,
             render: (row) => (
-                <div className="flex items-center justify-end gap-1">
-                    <button
-                        type="button"
-                        onClick={() => openEditAdmin(row)}
-                        className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition"
-                        title="Edit Admin"
-                    >
-                        <Icon icon="ph:pencil-simple-bold" className="w-4 h-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setDeletingAdmin(row)}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                        title="Hapus Admin"
-                    >
-                        <Icon icon="ph:trash-bold" className="w-4 h-4" />
-                    </button>
+                <div className="flex items-center justify-center gap-1">
+                    <Tooltip text="Edit Admin">
+                        <button
+                            type="button"
+                            onClick={() => openEditAdmin(row)}
+                            className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition"
+                        >
+                            <Icon icon="ph:pencil-simple-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip text="Hapus Admin">
+                        <button
+                            type="button"
+                            onClick={() => setDeletingAdmin(row)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        >
+                            <Icon icon="ph:trash-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
                 </div>
             ),
         },
     ];
 
-    // Columns Definition for Tab 2: Pengguna Biasa (Read-Only)
     const userColumns = [
         {
             key: 'no',
@@ -285,13 +300,13 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
         },
         {
             key: 'source',
-            label: 'Status Sinkronisasi',
+            label: 'Sumber Data',
             align: 'center',
             sortable: false,
             render: () => (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
                     <Icon icon="ph:cloud-check-bold" className="w-3 h-3" />
-                    <span>RSAM API (Read-Only)</span>
+                    <span>Data Pusat</span>
                 </span>
             ),
         },
@@ -299,7 +314,7 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
 
     return (
         <AppLayout title="Master Pengguna & Administrator - Admin">
-            {/* Consistent Standard Header */}
+
             <div className="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="max-w-xl">
                     <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -307,7 +322,7 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
                         <span>Master Pengguna & Administrator</span>
                     </h1>
                     <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                        Kelola akun administrator lokal secara mandiri. Akun pengguna biasa disinkronkan langsung dari Helpdesk RSAM (Read-Only).
+                        Kelola akun admin dan daftar pegawai yang terdaftar.
                     </p>
                 </div>
 
@@ -317,13 +332,13 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
                         onClick={handleSyncRsam}
                         disabled={isSyncing}
                         className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200/90 hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs rounded-xl shadow-2xs transition active:scale-98 disabled:opacity-50 shrink-0"
-                        title="Tarik data pegawai dari Helpdesk RSAM API"
+                        title="Perbarui data pegawai dari pusat"
                     >
                         <Icon
                             icon={isSyncing ? 'ph:spinner-bold' : 'ph:cloud-arrow-down-bold'}
                             className={`w-4 h-4 text-teal-600 shrink-0 ${isSyncing ? 'animate-spin' : ''}`}
                         />
-                        <span className="whitespace-nowrap">{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan User RSAM'}</span>
+                        <span className="whitespace-nowrap">{isSyncing ? 'Memperbarui...' : 'Perbarui Data Pegawai'}</span>
                     </button>
 
                     <button
@@ -340,7 +355,6 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
                 </div>
             </div>
 
-            {/* Tabs Bar */}
             <div className="flex items-center gap-2 border-b border-slate-200 mb-6">
                 <button
                     type="button"
@@ -375,14 +389,13 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
                 </button>
             </div>
 
-            {/* TAB 1: DATATABLE ADMINISTRATOR LOKAL */}
             {activeTab === 'admins' && (
                 <div className="space-y-4">
                     <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-3">
                         <Icon icon="ph:info-bold" className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                         <div className="text-xs text-amber-900 leading-relaxed">
                             <span className="font-bold block text-amber-950">Manajemen Khusus Administrator</span>
-                            Role Admin dikelola secara lokal pada sistem ini (tidak ditarik dari RSAM API). Anda dapat menambah akun admin baru, mengganti kata sandi, atau mengubah status aktif.
+                            Akun admin dikelola langsung di sini. Anda dapat menambah akun admin baru, mengganti kata sandi, atau mengubah status aktif.
                         </div>
                     </div>
 
@@ -396,13 +409,12 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
                 </div>
             )}
 
-            {/* TAB 2: DATATABLE PENGGUNA BIASA (RSAM) */}
             {activeTab === 'users' && (
                 <div className="space-y-4">
                     <div className="bg-sky-50/80 border border-sky-200/80 rounded-2xl p-3.5 flex items-start gap-3">
                         <Icon icon="ph:info-bold" className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
                         <div className="text-xs text-sky-900 leading-relaxed">
-                            <span className="font-bold block text-sky-950">Data Pengguna Terintegrasi API (Read-Only)</span>
+                            <span className="font-bold block text-sky-950">Daftar Pegawai (Otomatis dari Pusat)</span>
                             Daftar akun pegawai di bawah ini ditarik secara terpusat dari server Helpdesk RSAM. Pengguna dapat langsung login ke Helpdesk Lite menggunakan email dan kata sandi RSAM mereka.
                         </div>
                     </div>
@@ -412,18 +424,17 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
                         data={userList}
                         searchPlaceholder="Cari nama pegawai, email RSAM, unit kerja..."
                         defaultSort={{ key: 'name', direction: 'asc' }}
-                        emptyMessage="Belum ada data pengguna yang tersinkron dari Helpdesk RSAM."
+                        emptyMessage="Belum ada data pegawai yang tersedia."
                     />
                 </div>
             )}
 
-            {/* Modal Tambah Admin */}
             <Modal show={isCreateAdminModalOpen} onClose={() => setIsCreateAdminModalOpen(false)} maxWidth="md">
                 <form onSubmit={handleCreateAdminSubmit} className="p-6">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <div>
                             <h3 className="text-sm font-bold text-slate-900">Tambah Administrator Baru</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Akun admin dibuat secara lokal di database ini.</p>
+                            <p className="text-xs text-slate-500 mt-0.5">Tambahkan akun admin baru untuk mengelola helpdesk.</p>
                         </div>
                         <button type="button" onClick={() => setIsCreateAdminModalOpen(false)} className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg">
                             <Icon icon="ph:x-bold" className="w-4 h-4" />
@@ -515,7 +526,6 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
                 </form>
             </Modal>
 
-            {/* Modal Edit Admin */}
             {editingAdmin && (
                 <Modal show={Boolean(editingAdmin)} onClose={() => setEditingAdmin(null)} maxWidth="md">
                     <form onSubmit={handleEditAdminSubmit} className="p-6">
@@ -619,7 +629,6 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
                 </Modal>
             )}
 
-            {/* Modal Konfirmasi Hapus Admin */}
             <Modal show={Boolean(deletingAdmin)} onClose={() => setDeletingAdmin(null)} maxWidth="sm">
                 <div className="p-6 text-center">
                     <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">

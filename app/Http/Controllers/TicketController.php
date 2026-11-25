@@ -13,12 +13,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TicketController extends Controller
 {
-    // dashboard tiket user
+
     public function index(Request $request): Response
     {
         $user = Auth::user();
@@ -117,7 +118,6 @@ class TicketController extends Controller
             ];
         });
 
-        // hitung statistik tiket user sekaligus dalam 1 query biar enteng
         $statsRow = Ticket::where('user_id', $user->id)
             ->selectRaw("
                 count(*) as total,
@@ -133,46 +133,45 @@ class TicketController extends Controller
             'resolved' => (int) ($statsRow->resolved_count ?? 0),
         ];
 
-        // master data di-cache singkat biar ga bolak balik query db
-        $categories = Cache::remember('active_ticket_categories', 60, fn () => 
-            TicketCategory::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'icon', 'description'])
+        $categories = Cache::remember('active_ticket_categories_v3', 60, fn () =>
+            TicketCategory::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'icon', 'description'])->toArray()
         );
-        $urgencies = Cache::remember('active_ticket_urgencies', 60, fn () => 
-            TicketUrgency::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'color', 'level', 'sla_hours', 'description'])
+        $urgencies = Cache::remember('active_ticket_urgencies_v3', 60, fn () =>
+            TicketUrgency::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'color', 'level', 'sla_hours', 'description'])->toArray()
         );
-        $units = Cache::remember('active_units_tree', 60, fn () => 
+        $units = Cache::remember('active_units_tree_v3', 60, fn () =>
             Unit::with(['subUnits' => fn ($q) => $q->where('is_active', true)->orderBy('name', 'asc')])
-                ->where('is_active', true)->orderBy('name', 'asc')->get(['id', 'name', 'source'])
+                ->where('is_active', true)->orderBy('name', 'asc')->get(['id', 'name', 'source'])->toArray()
         );
 
         return Inertia::render('Helpdesk/User/Dashboard', [
-            'tickets' => $tickets,
+            'tickets' => $tickets->values()->all(),
             'stats' => $stats,
-            'categories' => $categories,
-            'urgencies' => $urgencies,
-            'units' => $units,
+            'categories' => is_array($categories) ? $categories : [],
+            'urgencies' => is_array($urgencies) ? $urgencies : [],
+            'units' => is_array($units) ? $units : [],
             'filters' => $request->only(['status', 'category_id', 'urgency_id', 'search']),
         ]);
     }
 
-    // buat tiket baru
     public function store(Request $request): RedirectResponse
     {
         $user = Auth::user();
 
         $request->validate([
             'subject' => 'required|string|max:255',
-            'category_id' => 'required|exists:ticket_categories,id',
-            'urgency_id' => 'required|exists:ticket_urgencies,id',
+            'category_id' => ['required', Rule::exists('ticket_categories', 'id')->where('is_active', true)],
+            'urgency_id' => ['required', Rule::exists('ticket_urgencies', 'id')->where('is_active', true)],
             'unit' => 'nullable|string|max:100',
             'sub_unit' => 'nullable|string|max:100',
             'description' => 'required|string',
+            'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx,xls,xlsx,zip|max:10240',
         ]);
 
         $attachments = [];
         if ($request->hasFile('attachments')) {
-            // blokir ekstensi bahaya biar aman dari script nakal
+
             $blockedExtensions = ['php', 'phtml', 'exe', 'sh', 'bat', 'cmd', 'js', 'vbs', 'html', 'htm'];
 
             foreach ($request->file('attachments') as $file) {
@@ -221,7 +220,6 @@ class TicketController extends Controller
             'attachments' => !empty($attachments) ? $attachments : null,
         ]);
 
-        // bersihin cache sla admin biar update
         Cache::forget('admin_sla_alerts_summary');
 
         broadcast(new TicketUpdated($ticket, 'created', "Tiket baru diajukan: {$ticket->ticket_number} - {$ticket->subject}", $user));
@@ -230,18 +228,21 @@ class TicketController extends Controller
         return redirect()->back()->with('success', 'Tiket ' . $ticket->ticket_number . ' berhasil dibuat!');
     }
 
-    // balas percakapan tiket
     public function reply(Request $request, Ticket $ticket): RedirectResponse
     {
         $user = Auth::user();
 
-        // proteksi: cuma pemilik tiket atau admin yang boleh balas
         if ($ticket->user_id !== $user->id && !$user->isAdmin()) {
             abort(403, 'Akses tidak diizinkan');
         }
 
+        if ($ticket->status === 'closed' && !$user->isAdmin()) {
+            return back()->with('error', 'Tiket sudah ditutup dan tidak dapat dibalas lagi.');
+        }
+
         $request->validate([
             'message' => 'required|string',
+            'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx,xls,xlsx,zip|max:10240',
         ]);
 
@@ -289,3 +290,4 @@ class TicketController extends Controller
         return redirect()->back()->with('success', 'Pesan tanggapan berhasil dikirim.');
     }
 }
+

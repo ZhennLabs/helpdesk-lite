@@ -1,18 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Icon } from '@iconify/react';
 
-/**
- * Komponen DataTable Universal untuk Helpdesk Lite
- * Mendukung pencarian instan, sorting kolom, pilihan jumlah per halaman (10/25/50/100),
- * pagination interaktif, dan expandable rows.
- */
 export default function DataTable({
     columns = [],
     data = [],
     searchable = true,
     searchPlaceholder = 'Cari data...',
     searchKeys = null,
-    defaultSort = null, // { key: 'name', direction: 'asc' | 'desc' }
+    defaultSort = null,
     pageSizeOptions = [10, 25, 50, 100],
     defaultPageSize = 10,
     filterSlot = null,
@@ -27,7 +22,6 @@ export default function DataTable({
     const [currentPage, setCurrentPage] = useState(1);
     const [sortConfig, setSortConfig] = useState(defaultSort);
 
-    // 1. Filtering
     const filteredData = useMemo(() => {
         if (!searchQuery.trim()) return data;
         const q = searchQuery.toLowerCase().trim();
@@ -40,11 +34,10 @@ export default function DataTable({
                 });
             }
 
-            // Default: search all string/number fields of the row
             return Object.values(row).some((val) => {
                 if (val === null || val === undefined) return false;
                 if (typeof val === 'object') {
-                    // Quick shallow check for nested name/title
+
                     if (val.name) return String(val.name).toLowerCase().includes(q);
                     return false;
                 }
@@ -53,7 +46,6 @@ export default function DataTable({
         });
     }, [data, searchQuery, searchKeys]);
 
-    // 2. Sorting
     const sortedData = useMemo(() => {
         if (!sortConfig || !sortConfig.key) return filteredData;
 
@@ -76,7 +68,6 @@ export default function DataTable({
         });
     }, [filteredData, sortConfig, columns]);
 
-    // 3. Pagination
     const totalRecords = sortedData.length;
     const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
     const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -86,7 +77,6 @@ export default function DataTable({
         return sortedData.slice(start, start + pageSize);
     }, [sortedData, safeCurrentPage, pageSize]);
 
-    // Handle Sort Toggle
     const handleSort = (columnKey, isSortable) => {
         if (!isSortable) return;
 
@@ -97,15 +87,13 @@ export default function DataTable({
             if (prev.direction === 'asc') {
                 return { key: columnKey, direction: 'desc' };
             }
-            return null; // reset to unsorted
+            return null;
         });
     };
 
-    // Calculate start & end record numbers
     const startRecord = totalRecords === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1;
     const endRecord = Math.min(safeCurrentPage * pageSize, totalRecords);
 
-    // Generate page numbers with ellipsis
     const paginationItems = useMemo(() => {
         const pages = [];
         if (totalPages <= 7) {
@@ -124,9 +112,9 @@ export default function DataTable({
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-            {/* Top Toolbar: Entries per page & Live Search */}
+
             <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3.5 bg-slate-50/50">
-                {/* Entries selector */}
+
                 <div className="flex items-center gap-2 text-xs text-slate-600">
                     <span className="font-medium">Tampilkan</span>
                     <select
@@ -146,7 +134,6 @@ export default function DataTable({
                     <span className="font-medium">data per halaman</span>
                 </div>
 
-                {/* Filter slot & Search input */}
                 <div className="flex flex-wrap items-center gap-2.5 justify-end">
                     {filterSlot}
 
@@ -180,51 +167,51 @@ export default function DataTable({
                 </div>
             </div>
 
-            {/* Table Container */}
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
-                        <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                        <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                             {columns.map((col) => {
                                 const isSortable = col.sortable !== false && col.key !== 'actions' && col.key !== 'expand';
                                 const isSorted = sortConfig?.key === col.key;
                                 const direction = sortConfig?.direction;
+                                const align = col.key === 'actions' ? 'center' : (col.align || 'left');
 
                                 return (
                                     <th
                                         key={col.key}
                                         style={{ width: col.width }}
                                         onClick={() => handleSort(col.key, isSortable)}
-                                        className={`py-3.5 px-4 select-none ${
-                                            col.align === 'center'
+                                        className={`py-3 px-3 select-none whitespace-nowrap align-middle ${
+                                            align === 'center'
                                                 ? 'text-center'
-                                                : col.align === 'right'
+                                                : align === 'right'
                                                 ? 'text-right'
                                                 : 'text-left'
                                         } ${isSortable ? 'cursor-pointer hover:bg-slate-100/70 transition-colors' : ''}`}
                                     >
                                         <div
-                                            className={`inline-flex items-center gap-1.5 ${
-                                                col.align === 'center'
+                                            className={`inline-flex items-center gap-1 ${
+                                                align === 'center'
                                                     ? 'justify-center'
-                                                    : col.align === 'right'
+                                                    : align === 'right'
                                                     ? 'justify-end'
                                                     : 'justify-start'
                                             }`}
                                         >
-                                            <span className={isSorted ? 'text-brand-700 font-black' : ''}>
+                                            <span className={isSorted ? 'text-brand-700 font-extrabold' : ''}>
                                                 {col.label}
                                             </span>
                                             {isSortable && (
                                                 <span className="shrink-0">
                                                     {isSorted ? (
                                                         direction === 'asc' ? (
-                                                            <Icon icon="ph:arrow-up-bold" className="w-3.5 h-3.5 text-brand-600" />
+                                                            <Icon icon="ph:arrow-up-bold" className="w-3 h-3 text-brand-600" />
                                                         ) : (
-                                                            <Icon icon="ph:arrow-down-bold" className="w-3.5 h-3.5 text-brand-600" />
+                                                            <Icon icon="ph:arrow-down-bold" className="w-3 h-3 text-brand-600" />
                                                         )
                                                     ) : (
-                                                        <Icon icon="ph:arrows-down-up-bold" className="w-3.5 h-3.5 text-slate-300" />
+                                                        <Icon icon="ph:arrows-down-up-bold" className="w-3 h-3 text-slate-300" />
                                                     )}
                                                 </span>
                                             )}
@@ -257,14 +244,18 @@ export default function DataTable({
                                 return (
                                     <React.Fragment key={rowKey(row, idx)}>
                                         <tr className="hover:bg-slate-50/70 transition group">
-                                            {columns.map((col) => (
+                                            {columns.map((col) => {
+                                                const align = col.key === 'actions' ? 'center' : (col.align || 'left');
+                                                return (
                                                 <td
                                                     key={col.key}
-                                                    className={`py-3.5 px-4 ${
-                                                        col.align === 'center'
-                                                            ? 'text-center'
-                                                            : col.align === 'right'
-                                                            ? 'text-right'
+                                                    className={`py-3 px-3 align-middle ${
+                                                        align === 'center'
+                                                            ? 'text-center [&>*]:mx-auto [&>div.flex]:justify-center'
+                                                            : align === 'right'
+                                                            ? 'text-right [&>div.flex]:justify-end'
+                                                            : align === 'justify'
+                                                            ? 'text-justify'
                                                             : 'text-left'
                                                     }`}
                                                 >
@@ -274,10 +265,10 @@ export default function DataTable({
                                                         ? String(row[col.key])
                                                         : '-'}
                                                 </td>
-                                            ))}
+                                                );
+                                            })}
                                         </tr>
 
-                                        {/* Optional Expandable Sub-Row */}
                                         {isExpanded && subRowRender && (
                                             <tr className="bg-slate-50/60">
                                                 <td colSpan={columns.length} className="p-4 pl-12 pr-6">
@@ -293,7 +284,6 @@ export default function DataTable({
                 </table>
             </div>
 
-            {/* Bottom Footer: Info text & Pagination */}
             <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 bg-slate-50/40">
                 <div>
                     Menampilkan <span className="font-bold text-slate-800">{startRecord}</span> sampai{' '}

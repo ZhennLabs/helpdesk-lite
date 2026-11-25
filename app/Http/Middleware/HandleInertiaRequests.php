@@ -39,7 +39,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'status' => fn () => $request->session()->get('status'),
             ],
-            // hitung notif sla tiket admin (di-cache 15 detik biar responsif dan hemat db)
+            
             'slaAlerts' => function () use ($user) {
                 if (!$user || $user->role !== 'admin') {
                     return [
@@ -50,8 +50,9 @@ class HandleInertiaRequests extends Middleware
                     ];
                 }
 
-                return Cache::remember('admin_sla_alerts_summary', 15, function () {
+                return Cache::remember('admin_sla_alerts_summary', 60, function () {
                     $activeTickets = Ticket::whereIn('status', ['open', 'in_progress'])
+                        ->select(['id', 'ticket_number', 'subject', 'reporter_name', 'reporter_unit', 'status', 'urgency_id', 'created_at', 'updated_at', 'resolved_at'])
                         ->with('urgency:id,name,color,level,sla_hours')
                         ->latest('updated_at')
                         ->get();

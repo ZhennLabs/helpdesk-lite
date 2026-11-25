@@ -10,19 +10,17 @@ use Illuminate\Support\Facades\Log;
 
 class RsamApiService
 {
-    // url helpdesk rsam dari env
+
     protected static function getBaseUrl(): string
     {
-        return rtrim(env('HELPDESK_RSAM_API_URL', 'http://127.0.0.1:8000/api/external'), '/');
+        return rtrim(env('HELPDESK_RSAM_API_URL', 'http://10.10.1.89:8000/api/external'), '/');
     }
 
-    // api key rsam dari env
     protected static function getApiKey(): string
     {
         return env('HELPDESK_RSAM_API_KEY', 'rsam-helpdesk-api-secret-key-2026');
     }
 
-    // verifikasi login ke server rsam utama
     public static function verifyCredentials(string $email, string $password): array
     {
         try {
@@ -60,13 +58,13 @@ class RsamApiService
         }
     }
 
-    // sync akun user dari rsam ke db lokal (role selalu user)
+    // pertahankan status aktif lokal biar akun nonaktif ga ke-reset
     public static function syncOrCreateUser(array $remoteUser): User
     {
         $email = strtolower(trim($remoteUser['email']));
         $existing = User::where('email', $email)->first();
 
-        $role = ($existing && $existing->role === 'admin') ? 'admin' : 'user';
+        $role = ($existing && $existing->email === 'admin@helpdesk.local') ? 'admin' : 'user';
 
         $userData = [
             'rsam_user_id' => $remoteUser['id'] ?? null,
@@ -75,10 +73,9 @@ class RsamApiService
             'sub_unit' => $remoteUser['sub_unit'] ?? null,
             'role' => $role,
             'avatar_url' => $remoteUser['avatar_url'] ?? null,
-            'is_active' => true,
+            'is_active' => $existing ? $existing->is_active : true,
         ];
 
-        // simpan password hash dari RSAM biar user bisa login di kedua web dengan password yang sama
         if (!empty($remoteUser['password'])) {
             $userData['password'] = $remoteUser['password'];
         }
@@ -86,7 +83,6 @@ class RsamApiService
         return User::updateOrCreate(['email' => $email], $userData);
     }
 
-    // tarik daftar user dari rsam
     public static function fetchRemoteUsers(array $params = []): array
     {
         try {
@@ -109,7 +105,6 @@ class RsamApiService
         }
     }
 
-    // tarik unit & sub unit dari rsam
     public static function fetchRemoteUnits(): array
     {
         try {
@@ -132,7 +127,6 @@ class RsamApiService
         }
     }
 
-    // simpan sync unit ke db lokal
     public static function syncRemoteUnits(): array
     {
         $remote = self::fetchRemoteUnits();

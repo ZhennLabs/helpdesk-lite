@@ -3,6 +3,7 @@ import { Head, useForm, usePage, router, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import DataTable from '@/Components/DataTable';
+import UiTooltip from '@/Components/Tooltip';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import {
@@ -17,7 +18,6 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
-// Register Chart.js components
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -28,6 +28,7 @@ ChartJS.register(
     Legend
 );
 
+// pastiin semua prop selalu bentuk array biar ga error pas di-map
 const toArray = (val, fallback = []) => {
     if (Array.isArray(val)) return val;
     if (val && typeof val === 'object') return Object.values(val);
@@ -35,26 +36,23 @@ const toArray = (val, fallback = []) => {
 };
 
 export default function AdminDashboard({
-    tickets: rawTickets = [],
+    tickets: propTickets = [],
     stats = { total: 0, open: 0, in_progress: 0, resolved: 0 },
-    categories: rawCategories = [],
-    urgencies: rawUrgencies = [],
-    technicians = [],
-    units: rawUnits = [],
-    monthly_chart: rawMonthlyChart = [],
-    category_distribution: rawCategoryDistribution = [],
-    available_years: rawAvailableYears = [2026],
+    categories: propCategories = [],
+    urgencies: propUrgencies = [],
+    technicians: propTechnicians = [],
+    units: propUnits = [],
+    monthly_chart = [],
+    category_distribution = [],
+    available_years = [2026],
     selected_year = 2026,
     filters = {},
 }) {
-    const tickets = toArray(rawTickets);
-    const categories = toArray(rawCategories);
-    const urgencies = toArray(rawUrgencies);
-    const units = toArray(rawUnits);
-    const monthly_chart = toArray(rawMonthlyChart);
-    const category_distribution = toArray(rawCategoryDistribution);
-    const available_years = toArray(rawAvailableYears, [2026]);
-
+    const tickets = Array.isArray(propTickets) ? propTickets : [];
+    const categories = Array.isArray(propCategories) ? propCategories : [];
+    const urgencies = Array.isArray(propUrgencies) ? propUrgencies : [];
+    const technicians = Array.isArray(propTechnicians) ? propTechnicians : [];
+    const units = Array.isArray(propUnits) ? propUnits : [];
     const { auth, slaAlerts } = usePage().props;
     const user = auth?.user;
 
@@ -67,7 +65,6 @@ export default function AdminDashboard({
     const [unitFilter, setUnitFilter] = useState(filters.unit || '');
     const [currentYear, setCurrentYear] = useState(selected_year || 2026);
 
-    // Form Update Status
     const {
         data: statusData,
         setData: setStatusData,
@@ -79,7 +76,6 @@ export default function AdminDashboard({
         note: '',
     });
 
-    // Form Reply
     const {
         data: replyData,
         setData: setReplyData,
@@ -93,14 +89,12 @@ export default function AdminDashboard({
 
     const chatEndRef = useRef(null);
 
-    // Auto-scroll ke bawah saat ada pesan baru pada modal chat
     useEffect(() => {
         if (selectedTicket?.messages?.length) {
             chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [selectedTicket?.messages?.length]);
 
-    // Realtime Reverb: Tanggapan Pesan Langsung Masuk ke Chat yang Sedang Terbuka
     useEffect(() => {
         if (!selectedTicket || typeof window === 'undefined' || !window.Echo) return;
 
@@ -144,7 +138,6 @@ export default function AdminDashboard({
         };
     }, [selectedTicket?.id, user?.id]);
 
-    // Realtime Reverb: Update Tabel Antrean & Notifikasi Dashboard
     useEffect(() => {
         if (typeof window === 'undefined' || !window.Echo) return;
 
@@ -302,7 +295,6 @@ export default function AdminDashboard({
         }
     };
 
-    // Total tahunan untuk persentase legenda
     const totalMasukYear = useMemo(() => {
         return (monthly_chart || []).reduce((acc, curr) => acc + (curr.masuk || 0), 0);
     }, [monthly_chart]);
@@ -315,7 +307,6 @@ export default function AdminDashboard({
     const percentMasukDisplay = grandTotalYear > 0 ? Math.round((totalMasukYear / grandTotalYear) * 100) : 75;
     const percentSelesaiDisplay = grandTotalYear > 0 ? Math.round((totalSelesaiYear / grandTotalYear) * 100) : 25;
 
-    // Konfigurasi Chart.js Bar Chart
     const barChartData = useMemo(() => {
         return {
             labels: (monthly_chart || []).map((d) => d.month),
@@ -323,7 +314,7 @@ export default function AdminDashboard({
                 {
                     label: 'Tiket Masuk',
                     data: (monthly_chart || []).map((d) => d.masuk),
-                    backgroundColor: '#059669', // Emerald 600
+                    backgroundColor: '#059669',
                     hoverBackgroundColor: '#10B981',
                     borderRadius: 6,
                     borderSkipped: false,
@@ -333,7 +324,7 @@ export default function AdminDashboard({
                 {
                     label: 'Tiket Selesai',
                     data: (monthly_chart || []).map((d) => d.selesai),
-                    backgroundColor: '#F59E0B', // Amber 500
+                    backgroundColor: '#F59E0B',
                     hoverBackgroundColor: '#FBBF24',
                     borderRadius: 6,
                     borderSkipped: false,
@@ -401,7 +392,6 @@ export default function AdminDashboard({
         },
     }), []);
 
-    // Konfigurasi Chart.js Doughnut Chart
     const categoryChartItems = useMemo(() => {
         const palette = ['#059669', '#F59E0B', '#F43F5E', '#0EA5E9', '#8B5CF6', '#EC4899', '#6366F1'];
         const totalAll = (category_distribution || []).reduce((acc, c) => acc + (c.count || 0), 0) || 1;
@@ -455,19 +445,19 @@ export default function AdminDashboard({
         },
     }), []);
 
-    // Kolom tabel antrean tiket
     const ticketColumns = [
         {
             key: 'ticket_number',
             label: 'No. Tiket',
+            align: 'center',
             sortable: true,
             render: (t) => (
                 <button
                     type="button"
                     onClick={() => setSelectedTicket(t)}
-                    className="font-mono text-xs font-bold text-brand-600 hover:text-brand-800 transition flex items-center gap-1.5"
+                    className="font-mono text-xs font-bold text-brand-600 hover:text-brand-800 transition inline-flex items-center gap-1.5 whitespace-nowrap"
                 >
-                    <Icon icon="ph:ticket-bold" className="w-3.5 h-3.5" />
+                    <Icon icon="ph:ticket-bold" className="w-3.5 h-3.5 shrink-0" />
                     <span>{t.ticket_number}</span>
                 </button>
             ),
@@ -478,9 +468,9 @@ export default function AdminDashboard({
             sortable: true,
             sortValue: (t) => t.reporter?.name || '',
             render: (t) => (
-                <div>
-                    <div className="font-bold text-slate-900">{t.reporter.name}</div>
-                    <div className="text-[11px] text-slate-500">
+                <div className="max-w-[180px]">
+                    <div className="font-bold text-slate-900 truncate" title={t.reporter.name}>{t.reporter.name}</div>
+                    <div className="text-[11px] text-slate-500 truncate">
                         {t.reporter.unit} {t.reporter.sub_unit && t.reporter.sub_unit !== '-' ? `• ${t.reporter.sub_unit}` : ''}
                     </div>
                 </div>
@@ -506,7 +496,7 @@ export default function AdminDashboard({
         },
         {
             key: 'urgency_level',
-            label: 'Urgensi & SLA',
+            label: 'Urgensi & Batas Waktu',
             align: 'center',
             sortable: true,
             sortValue: (t) => (t.sla?.is_overdue ? 999 : (t.sla?.is_near_deadline ? 500 : (t.urgency?.level || 0))),
@@ -514,7 +504,7 @@ export default function AdminDashboard({
                 if (!t.urgency) return '-';
                 const urgencyClass = getUrgencyBadgeColor(t.urgency.color);
                 return (
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-col items-center gap-1 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${urgencyClass}`}>
                             {t.urgency.name}
                         </span>
@@ -522,7 +512,7 @@ export default function AdminDashboard({
                             <span
                                 className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${
                                     t.sla.status === 'overdue' || t.sla.status === 'breached'
-                                        ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                                        ? 'bg-red-50 text-red-700 border-red-200'
                                         : t.sla.status === 'near_deadline'
                                         ? 'bg-amber-50 text-amber-700 border-amber-200'
                                         : t.sla.status === 'met'
@@ -558,53 +548,17 @@ export default function AdminDashboard({
             render: (t) => {
                 const statusObj = getStatusBadge(t.status);
                 return (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusObj.bg}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusObj.dot}`} />
-                        {statusObj.label}
-                    </span>
-                );
-            },
-        },
-        {
-            key: 'handler',
-            label: 'Penanganan / Penyelesai',
-            sortable: true,
-            sortValue: (t) => t.resolved_by?.name || t.status,
-            render: (t) => {
-                if (t.status === 'resolved' || t.status === 'closed') {
-                    return (
-                        <div className="flex items-center gap-2">
-                            <img
-                                src={t.resolved_by?.avatar_url || 'https://ui-avatars.com/api/?name=Admin&background=0D9488&color=fff'}
-                                alt=""
-                                className="w-6 h-6 rounded-full object-cover shrink-0 ring-1 ring-emerald-300"
-                            />
-                            <div className="min-w-0">
-                                <span className="text-xs font-bold text-slate-800 block truncate leading-tight">
-                                    {t.resolved_by?.name || 'Admin'}
-                                </span>
-                                <span className="text-[10px] text-emerald-600 font-semibold block leading-tight">
-                                    Selesai • {t.resolved_at || '-'}
-                                </span>
-                            </div>
-                        </div>
-                    );
-                }
-
-                if (t.status === 'in_progress') {
-                    return (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/60">
-                            <Icon icon="ph:spinner-bold" className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />
-                            <span>Ditangani Tim Admin</span>
+                    <div className="flex flex-col items-center gap-1 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusObj.bg}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusObj.dot}`} />
+                            {statusObj.label}
                         </span>
-                    );
-                }
-
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                        <span>Menunggu Respon</span>
-                    </span>
+                        {(t.status === 'resolved' || t.status === 'closed') && t.resolved_by?.name && (
+                            <span className="text-[10px] text-slate-400 font-medium">
+                                oleh {t.resolved_by.name}
+                            </span>
+                        )}
+                    </div>
                 );
             },
         },
@@ -614,25 +568,25 @@ export default function AdminDashboard({
             align: 'right',
             sortable: false,
             render: (t) => (
-                <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    <button
-                        type="button"
-                        onClick={(e) => openStatusModal(t, e)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition"
-                        title="Perbarui Status Penanganan"
-                    >
-                        <Icon icon="ph:arrows-clockwise-bold" className="w-3.5 h-3.5 text-slate-600" />
-                        <span>Status</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setSelectedTicket(t)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition"
-                        title="Buka Detail & Respon Tiket"
-                    >
-                        <Icon icon="ph:chats-circle-bold" className="w-3.5 h-3.5 text-brand-600" />
-                        <span>Respon</span>
-                    </button>
+                <div className="flex items-center justify-center gap-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <UiTooltip text="Perbarui Status">
+                        <button
+                            type="button"
+                            onClick={(e) => openStatusModal(t, e)}
+                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
+                        >
+                            <Icon icon="ph:arrows-clockwise-bold" className="w-4 h-4 text-slate-600" />
+                        </button>
+                    </UiTooltip>
+                    <UiTooltip text="Detail & Respon">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedTicket(t)}
+                            className="p-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg transition"
+                        >
+                            <Icon icon="ph:chats-circle-bold" className="w-4 h-4 text-brand-600" />
+                        </button>
+                    </UiTooltip>
                 </div>
             ),
         },
@@ -640,9 +594,9 @@ export default function AdminDashboard({
 
     return (
         <AppLayout title="Dashboard - Admin Workspace">
-            {/* Hero Banner (Persis seperti referensi dengan karakter animasi teknisi transparan tanpa background kotak) */}
+
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#176B54] via-[#1B775E] to-[#125844] text-white p-6 sm:p-8 lg:p-10 mb-6 shadow-sm border border-emerald-900/20">
-                {/* Subtle pattern background */}
+
                 <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px]" />
                 <div className="absolute -right-12 -bottom-12 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -676,20 +630,18 @@ export default function AdminDashboard({
                         </div>
                     </div>
 
-                    {/* Karakter Animasi Teknisi 3D Tanpa Background (Seamless Cutout persis layout referensi) */}
                     <div className="relative shrink-0 flex items-end justify-center md:justify-end -mb-6 sm:-mb-8 lg:-mb-10 pointer-events-none">
                         <img
                             src="/images/technician_hero.png"
-                            alt="Animasi Teknisi IT Support RSAM"
+                            alt="Ilustrasi Petugas Helpdesk RSAM"
                             className="w-52 sm:w-64 lg:w-72 h-auto max-h-[260px] sm:max-h-[300px] object-contain object-bottom drop-shadow-[0_15px_25px_rgba(0,0,0,0.35)]"
                         />
                     </div>
                 </div>
             </div>
 
-            {/* 4 Kartu Metrik KPI (Garis Aksen Vertikal & Kotak Ikon di Kanan Atas) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {/* 1. Appointments / Total Tiket */}
+
                 <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                         <div className="w-1.5 h-10 bg-emerald-600 rounded-full shrink-0" />
@@ -703,12 +655,11 @@ export default function AdminDashboard({
                     </div>
                 </div>
 
-                {/* 2. New Patients / Tiket Baru (Open) */}
                 <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                         <div className="w-1.5 h-10 bg-amber-400 rounded-full shrink-0" />
                         <div>
-                            <p className="text-xs font-medium text-slate-500">Tiket Baru (Open)</p>
+                            <p className="text-xs font-medium text-slate-500">Tiket Baru</p>
                             <p className="text-2xl sm:text-3xl font-extrabold text-amber-500 mt-0.5">{stats.open}</p>
                         </div>
                     </div>
@@ -717,7 +668,6 @@ export default function AdminDashboard({
                     </div>
                 </div>
 
-                {/* 3. Operations / Sedang Diproses */}
                 <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                         <div className="w-1.5 h-10 bg-rose-500 rounded-full shrink-0" />
@@ -731,7 +681,6 @@ export default function AdminDashboard({
                     </div>
                 </div>
 
-                {/* 4. Earnings / Tiket Selesai */}
                 <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                         <div className="w-1.5 h-10 bg-sky-500 rounded-full shrink-0" />
@@ -746,9 +695,8 @@ export default function AdminDashboard({
                 </div>
             </div>
 
-            {/* Baris Grafik Analitik Menggunakan Chart.js (Dual Bar Chart & Donut Chart Dinamis) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                {/* Grafik Kiri (2 Kolom): Tren Penanganan Tiket Bulanan via Chart.js */}
+
                 <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                         <div className="flex items-center gap-2">
@@ -781,13 +729,11 @@ export default function AdminDashboard({
                         </div>
                     </div>
 
-                    {/* Chart.js Bar Chart Canvas */}
                     <div className="mt-4 h-64 w-full">
                         <Bar data={barChartData} options={barChartOptions} />
                     </div>
                 </div>
 
-                {/* Grafik Kanan (1 Kolom): Distribusi Kategori Kendala via Chart.js Doughnut */}
                 <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <h2 className="text-sm sm:text-base font-bold text-slate-900">
@@ -798,11 +744,9 @@ export default function AdminDashboard({
                         </button>
                     </div>
 
-                    {/* Chart.js Doughnut Canvas dengan Ikon Tengah */}
                     <div className="relative my-2 h-52 w-full flex items-center justify-center">
                         <Doughnut data={doughnutData} options={doughnutOptions} />
 
-                        {/* Ikon Tengah Donut */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                             <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-700 shadow-inner">
                                 <Icon icon="ph:headset-bold" className="w-5 h-5 text-brand-600" />
@@ -813,7 +757,6 @@ export default function AdminDashboard({
                         </div>
                     </div>
 
-                    {/* Legenda Kategori Dinamis dari Database */}
                     <div className="space-y-2 pt-3 border-t border-slate-100 max-h-40 overflow-y-auto pr-1">
                         {categoryChartItems.map((cat, idx) => (
                             <div key={idx} className="flex items-center justify-between text-xs">
@@ -836,7 +779,6 @@ export default function AdminDashboard({
                 </div>
             </div>
 
-            {/* Bagian Tabel Antrean & Penanganan Tiket Terpadu */}
             <div id="daftar-antrean-tiket" className="mt-8">
                 <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
@@ -850,20 +792,19 @@ export default function AdminDashboard({
                     </div>
                 </div>
 
-                {/* Alert Perhatian SLA jika ada tiket mendesak / terlewat */}
                 {slaAlerts?.urgent_count > 0 && (
                     <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-red-500/10 via-amber-500/10 to-transparent border border-red-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-bounce">
+                            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                                 <Icon icon="ph:warning-octagon-fill" className="w-5 h-5" />
                             </div>
                             <div>
                                 <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                                    <span>Perhatian SLA: Ada {slaAlerts.urgent_count} Tiket yang Membutuhkan Penanganan Segera!</span>
+                                    <span>Perhatian: Ada {slaAlerts.urgent_count} Tiket yang Membutuhkan Penanganan Segera!</span>
                                 </h4>
                                 <p className="text-xs text-slate-600 mt-0.5">
-                                    {slaAlerts.overdue_count > 0 && <span className="text-red-600 font-bold mr-2">{slaAlerts.overdue_count} tiket melewati batas waktu SLA.</span>}
-                                    {slaAlerts.near_count > 0 && <span className="text-amber-700 font-bold">{slaAlerts.near_count} tiket mendekati batas waktu resolusi.</span>}
+                                    {slaAlerts.overdue_count > 0 && <span className="text-red-600 font-bold mr-2">{slaAlerts.overdue_count} tiket melewati batas waktu.</span>}
+                                    {slaAlerts.near_count > 0 && <span className="text-amber-700 font-bold">{slaAlerts.near_count} tiket mendekati batas waktu penyelesaian.</span>}
                                 </p>
                             </div>
                         </div>
@@ -881,12 +822,10 @@ export default function AdminDashboard({
                     </div>
                 )}
 
-                {/* DataTable dengan Slot Filter Komprehensif */}
                 <DataTable
                     columns={ticketColumns}
                     data={tickets}
                     searchPlaceholder="Cari nomor tiket, judul kendala, nama pelapor..."
-                    defaultSort={{ key: 'ticket_number', direction: 'desc' }}
                     emptyMessage="Tidak ada tiket kendala yang sesuai dengan filter pencarian."
                     filterSlot={
                         <div className="flex flex-wrap items-center gap-2">
@@ -898,11 +837,11 @@ export default function AdminDashboard({
                                 }}
                                 className="py-1.5 px-3 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:ring-brand-500 shadow-2xs"
                             >
-                                <option value="all">Antrean Aktif (Open & Diproses)</option>
-                                <option value="sla_urgent">⚠️ Perlu Tindakan SLA (Mendekati / Terlewat)</option>
-                                <option value="open">Menunggu (Open)</option>
-                                <option value="in_progress">Sedang Diproses (In Progress)</option>
-                                <option value="resolved">Telah Selesai (Resolved)</option>
+                                <option value="all">Antrean Aktif</option>
+                                <option value="sla_urgent">Mendekati / Melewati Batas Waktu</option>
+                                <option value="open">Menunggu</option>
+                                <option value="in_progress">Sedang Diproses</option>
+                                <option value="resolved">Telah Selesai</option>
                                 <option value="history">Semua Riwayat (Termasuk Selesai)</option>
                             </select>
 
@@ -958,7 +897,6 @@ export default function AdminDashboard({
                 />
             </div>
 
-            {/* Modal Perbarui Status Tiket */}
             {statusModalTicket && (
                 <Modal show={Boolean(statusModalTicket)} onClose={() => setStatusModalTicket(null)} maxWidth="md">
                     <form onSubmit={handleStatusSubmit} className="p-6">
@@ -980,10 +918,10 @@ export default function AdminDashboard({
                                     onChange={(e) => setStatusData('status', e.target.value)}
                                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:border-brand-500 focus:ring-brand-500 bg-white"
                                 >
-                                    <option value="open">Menunggu (Open)</option>
-                                    <option value="in_progress">Sedang Diproses (In Progress)</option>
-                                    <option value="resolved">Selesai Ditangani (Resolved)</option>
-                                    <option value="closed">Ditutup (Closed)</option>
+                                    <option value="open">Menunggu</option>
+                                    <option value="in_progress">Sedang Diproses</option>
+                                    <option value="resolved">Selesai Ditangani</option>
+                                    <option value="closed">Ditutup</option>
                                 </select>
                             </div>
 
@@ -1015,7 +953,6 @@ export default function AdminDashboard({
                 </Modal>
             )}
 
-            {/* Modal Detail & Percakapan Tiket */}
             {selectedTicket && (
                 <Modal show={Boolean(selectedTicket)} onClose={() => setSelectedTicket(null)} maxWidth="2xl">
                     <div className="p-6 flex flex-col max-h-[85vh]">
@@ -1048,7 +985,7 @@ export default function AdminDashboard({
                         </div>
 
                         <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
-                            {/* Banner Status Penyelesaian */}
+
                             {(selectedTicket.resolved_by || selectedTicket.status === 'resolved' || selectedTicket.status === 'closed') ? (
                                 <div className="bg-emerald-50 border border-emerald-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs">
                                     <div className="flex items-center gap-3">
@@ -1072,7 +1009,7 @@ export default function AdminDashboard({
                             ) : (
                                 <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3.5 flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-2.5 text-xs text-slate-600">
-                                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                        <span className="w-2 h-2 rounded-full bg-amber-500" />
                                         <span>Status: <strong className="text-slate-900">{selectedTicket.status === 'in_progress' ? 'Sedang Diproses Admin' : 'Menunggu Ditangani'}</strong></span>
                                     </div>
                                     <button
@@ -1086,7 +1023,6 @@ export default function AdminDashboard({
                                 </div>
                             )}
 
-                            {/* Card Informasi SLA & Batas Waktu */}
                             {selectedTicket.sla && (
                                 <div
                                     className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs ${
@@ -1103,9 +1039,9 @@ export default function AdminDashboard({
                                         <div
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                                                 selectedTicket.sla.is_overdue || selectedTicket.sla.status === 'breached'
-                                                    ? 'bg-red-200/80 text-red-700 animate-pulse'
+                                                    ? 'bg-red-200/80 text-red-700'
                                                     : selectedTicket.sla.is_near_deadline
-                                                    ? 'bg-amber-200/80 text-amber-700 animate-bounce'
+                                                    ? 'bg-amber-200/80 text-amber-700'
                                                     : selectedTicket.sla.status === 'met'
                                                     ? 'bg-emerald-200/80 text-emerald-700'
                                                     : 'bg-indigo-200/80 text-indigo-700'
@@ -1126,13 +1062,13 @@ export default function AdminDashboard({
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs font-extrabold">Service Level Agreement (SLA)</span>
+                                                <span className="text-xs font-extrabold">Target Waktu Penanganan</span>
                                                 <span
                                                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
                                                         selectedTicket.sla.is_overdue || selectedTicket.sla.status === 'breached'
                                                             ? 'bg-red-100 text-red-800 border-red-300'
                                                             : selectedTicket.sla.is_near_deadline
-                                                            ? 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
+                                                            ? 'bg-amber-100 text-amber-800 border-amber-300'
                                                             : selectedTicket.sla.status === 'met'
                                                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                                             : 'bg-indigo-100 text-indigo-800 border-indigo-300'
@@ -1155,7 +1091,7 @@ export default function AdminDashboard({
                                     {(selectedTicket.sla.is_overdue || selectedTicket.sla.status === 'breached') && selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
                                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-100/90 px-2.5 py-1 rounded-xl shrink-0">
                                             <Icon icon="ph:warning-octagon-bold" className="w-3.5 h-3.5 text-red-600" />
-                                            Melewati Target SLA
+                                            Melewati Batas Waktu
                                         </span>
                                     )}
                                 </div>
@@ -1167,7 +1103,6 @@ export default function AdminDashboard({
                                 </p>
                             </div>
 
-                            {/* Riwayat Percakapan & Tanggapan */}
                             <div className="space-y-3">
                                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                                     <Icon icon="ph:chat-dots-bold" className="w-4 h-4 text-brand-600" />
@@ -1196,7 +1131,6 @@ export default function AdminDashboard({
                             </div>
                         </div>
 
-                        {/* Form Kirim Tanggapan */}
                         <form onSubmit={handleReplySubmit} className="pt-3 border-t border-slate-100 shrink-0">
                             <div className="flex gap-2">
                                 <input

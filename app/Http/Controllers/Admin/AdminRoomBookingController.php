@@ -18,13 +18,13 @@ use Inertia\Response;
 
 class AdminRoomBookingController extends Controller
 {
-    // dashboard & kelola booking ruangan admin
+    
     public function index(Request $request): Response
     {
         $selectedDate = $request->input('date', Carbon::today()->format('Y-m-d'));
         $today = Carbon::today()->format('Y-m-d');
 
-        // hitung statistik booking sekaligus dalam 1 query
+        
         $statsRow = RoomBooking::selectRaw("
             sum(case when booking_date = ? then 1 else 0 end) as today_total,
             sum(case when status = 'pending' then 1 else 0 end) as pending,
@@ -162,7 +162,7 @@ class AdminRoomBookingController extends Controller
             ];
         });
 
-        // ambil daftar user untuk dropdown penanggung jawab
+        
         $usersList = User::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'unit', 'sub_unit']);
@@ -180,7 +180,7 @@ class AdminRoomBookingController extends Controller
         ]);
     }
 
-    // update status booking oleh admin
+    
     public function updateStatus(Request $request, RoomBooking $booking): RedirectResponse
     {
         $request->validate([
@@ -191,7 +191,7 @@ class AdminRoomBookingController extends Controller
 
         $status = $request->status;
 
-        // kalau admin approve, pastikan ga bentrok sama yang udah approved
+        
         if ($status === 'approved') {
             $conflict = RoomBooking::findConflict(
                 $booking->room_id,
@@ -233,7 +233,7 @@ class AdminRoomBookingController extends Controller
         return back()->with('success', "Status booking {$booking->booking_number} berhasil diperbarui.");
     }
 
-    // simpan booking admin
+    
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
@@ -253,7 +253,7 @@ class AdminRoomBookingController extends Controller
 
         $status = $request->status;
 
-        // cek bentrok jadwal
+        
         if ($status === 'approved') {
             $conflict = RoomBooking::findConflict(
                 (int) $request->room_id,
@@ -302,7 +302,7 @@ class AdminRoomBookingController extends Controller
             ->with('success', "Booking ruangan '{$booking->room?->name}' berhasil dibuat.");
     }
 
-    // hapus booking
+    
     public function destroy(RoomBooking $booking): RedirectResponse
     {
         $number = $booking->booking_number;

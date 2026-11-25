@@ -3,6 +3,7 @@ import { Head, useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import DataTable from '@/Components/DataTable';
+import Tooltip from '@/Components/Tooltip';
 import { Icon } from '@iconify/react';
 
 export default function MasterUrgencies({ urgencies = [] }) {
@@ -132,7 +133,6 @@ export default function MasterUrgencies({ urgencies = [] }) {
         }
     };
 
-    // Columns Definition for DataTable
     const columns = [
         {
             key: 'order_index',
@@ -174,7 +174,7 @@ export default function MasterUrgencies({ urgencies = [] }) {
         },
         {
             key: 'sla_hours',
-            label: 'Target SLA',
+            label: 'Batas Waktu',
             align: 'center',
             sortable: true,
             render: (row) => (
@@ -187,9 +187,10 @@ export default function MasterUrgencies({ urgencies = [] }) {
         {
             key: 'description',
             label: 'Dampak & Keterangan',
+            align: 'justify',
             sortable: true,
             render: (row) => (
-                <span className="text-slate-500 max-w-sm truncate block">{row.description || '-'}</span>
+                <p className="text-slate-500 max-w-sm line-clamp-2 leading-relaxed text-justify">{row.description || '-'}</p>
             ),
         },
         {
@@ -216,23 +217,25 @@ export default function MasterUrgencies({ urgencies = [] }) {
             align: 'right',
             sortable: false,
             render: (row) => (
-                <div className="flex items-center justify-end gap-1">
-                    <button
-                        type="button"
-                        onClick={() => openEditModal(row)}
-                        className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition"
-                        title="Edit Urgensi"
-                    >
-                        <Icon icon="ph:pencil-simple-bold" className="w-4 h-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setDeletingUrgency(row)}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                        title="Hapus Urgensi"
-                    >
-                        <Icon icon="ph:trash-bold" className="w-4 h-4" />
-                    </button>
+                <div className="flex items-center justify-center gap-1">
+                    <Tooltip text="Edit Urgensi">
+                        <button
+                            type="button"
+                            onClick={() => openEditModal(row)}
+                            className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition"
+                        >
+                            <Icon icon="ph:pencil-simple-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip text="Hapus Urgensi">
+                        <button
+                            type="button"
+                            onClick={() => setDeletingUrgency(row)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        >
+                            <Icon icon="ph:trash-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
                 </div>
             ),
         },
@@ -240,15 +243,15 @@ export default function MasterUrgencies({ urgencies = [] }) {
 
     return (
         <AppLayout title="Master Urgensi Tiket - Admin">
-            {/* Consistent Standard Header */}
+
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="max-w-xl">
                     <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
                         <Icon icon="ph:siren-bold" className="w-7 h-7 text-brand-600 shrink-0" />
-                        <span>Master Urgensi & SLA</span>
+                        <span>Master Tingkat Urgensi</span>
                     </h1>
                     <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                        Atur skala prioritas, warna badge indikator, dan target SLA penyelesaian tiket kendala.
+                        Atur skala prioritas, warna penanda, dan batas waktu penyelesaian tiket.
                     </p>
                 </div>
 
@@ -264,7 +267,6 @@ export default function MasterUrgencies({ urgencies = [] }) {
                 </div>
             </div>
 
-            {/* DataTable */}
             <DataTable
                 columns={columns}
                 data={urgencies}
@@ -273,7 +275,6 @@ export default function MasterUrgencies({ urgencies = [] }) {
                 emptyMessage="Belum ada data urgensi terdaftar."
             />
 
-            {/* Modal Tambah Urgensi */}
             <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="md">
                 <form onSubmit={handleCreateSubmit} className="p-6">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -312,7 +313,7 @@ export default function MasterUrgencies({ urgencies = [] }) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Target SLA (Jam)</label>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Batas Waktu (Jam)</label>
                                 <input
                                     type="number"
                                     min={1}
@@ -394,7 +395,6 @@ export default function MasterUrgencies({ urgencies = [] }) {
                 </form>
             </Modal>
 
-            {/* Modal Edit Urgensi */}
             {editingUrgency && (
                 <Modal show={Boolean(editingUrgency)} onClose={() => setEditingUrgency(null)} maxWidth="md">
                     <form onSubmit={handleEditSubmit} className="p-6">
@@ -433,7 +433,7 @@ export default function MasterUrgencies({ urgencies = [] }) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Target SLA (Jam)</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Batas Waktu (Jam)</label>
                                     <input
                                         type="number"
                                         min={1}
@@ -504,7 +504,6 @@ export default function MasterUrgencies({ urgencies = [] }) {
                 </Modal>
             )}
 
-            {/* Modal Konfirmasi Hapus */}
             <Modal show={Boolean(deletingUrgency)} onClose={() => setDeletingUrgency(null)} maxWidth="sm">
                 <div className="p-6 text-center">
                     <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">

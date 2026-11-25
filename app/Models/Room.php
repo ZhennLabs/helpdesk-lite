@@ -33,9 +33,6 @@ class Room extends Model
         return $this->hasMany(RoomBooking::class);
     }
 
-    /**
-     * Cek apakah ruangan tersedia pada tanggal dan rentang jam tertentu
-     */
     public function isAvailableAt(string $date, string $startTime, string $endTime, ?int $excludeBookingId = null): bool
     {
         $query = $this->bookings()

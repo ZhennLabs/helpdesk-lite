@@ -8,13 +8,15 @@ use App\Services\RsamApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class LoginController extends Controller
 {
-    // halaman form login
+    
     public function create(): Response
     {
         return Inertia::render('Auth/Login', [
@@ -23,7 +25,8 @@ class LoginController extends Controller
         ]);
     }
 
-    // proses login
+    
+    // cek akun lokal dulu sebelum fallback ke api rsam
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
@@ -34,34 +37,79 @@ class LoginController extends Controller
         $email = strtolower(trim($request->email));
         $password = $request->password;
         $remember = $request->boolean('remember');
+        // batasi percobaan login biar ga kena brute force
+        $throttleKey = 'login:' . sha1($email . '|' . $request->ip());
 
-        // 1. Coba login lokal dulu (cepat & bisa untuk admin maupun user yang sudah ter-sync)
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            Log::warning('Security Incident: Login rate limit exceeded', [
+                'email' => $email,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            throw ValidationException::withMessages([
+                'email' => "Terlalu banyak percobaan login. Silakan coba lagi dalam {$seconds} detik.",
+            ]);
+        }
+
+        
         if (Auth::attempt(['email' => $email, 'password' => $password], $remember)) {
-            $request->session()->regenerate();
             $user = Auth::user();
+            if (!$user->is_active) {
+                Auth::logout();
+                RateLimiter::hit($throttleKey, 60);
+                Log::warning('Security Incident: Deactivated user login attempt', [
+                    'email' => $email,
+                    'ip' => $request->ip(),
+                ]);
+                throw ValidationException::withMessages([
+                    'email' => 'Akun Anda sedang dinonaktifkan. Hubungi administrator.',
+                ]);
+            }
+            RateLimiter::clear($throttleKey);
+            $request->session()->regenerate();
             return redirect()->intended($user->isAdmin() ? route('admin.dashboard') : route('dashboard'));
         }
 
-        // 2. Jika akun belum ada di lokal atau password lokal gagal (misal user baru ganti password di RSAM):
-        // Fallback verifikasi ke server Helpdesk RSAM API
+        
+        
         $rsamAuth = RsamApiService::verifyCredentials($email, $password);
 
         if ($rsamAuth['success'] && !empty($rsamAuth['user'])) {
-            // sync akun lokal beserta password hash terbaru dari RSAM
+            
             $user = RsamApiService::syncOrCreateUser($rsamAuth['user']);
 
+            if (!$user->is_active) {
+                RateLimiter::hit($throttleKey, 60);
+                Log::warning('Security Incident: Deactivated user RSAM fallback login attempt', [
+                    'email' => $email,
+                    'ip' => $request->ip(),
+                ]);
+                throw ValidationException::withMessages([
+                    'email' => 'Akun Anda sedang dinonaktifkan. Hubungi administrator.',
+                ]);
+            }
+
+            RateLimiter::clear($throttleKey);
             Auth::login($user, $remember);
             $request->session()->regenerate();
 
             return redirect()->intended($user->isAdmin() ? route('admin.dashboard') : route('dashboard'));
         }
 
+        RateLimiter::hit($throttleKey, 60);
+        Log::warning('Security Incident: Failed login attempt', [
+            'email' => $email,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
         throw ValidationException::withMessages([
             'email' => $rsamAuth['message'] ?: 'Email atau kata sandi tidak cocok dengan akun Helpdesk RSAM.',
         ]);
     }
 
-    // proses logout
+    
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();

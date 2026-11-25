@@ -3,6 +3,7 @@ import { Head, useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import DataTable from '@/Components/DataTable';
+import Tooltip from '@/Components/Tooltip';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 
@@ -21,6 +22,9 @@ const COMMON_FACILITIES = [
     'WiFi Dedicated',
 ];
 
+// simpan daftar fasilitas tambahan di browser
+const FACILITIES_STORAGE_KEY = 'helpdesk_room_facilities';
+
 const PRESET_COLORS = [
     { label: 'Teal', value: '#0D9488' },
     { label: 'Blue', value: '#2563EB' },
@@ -31,12 +35,36 @@ const PRESET_COLORS = [
 ];
 
 export default function MasterRooms({ rooms = [] }) {
-    const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+    const [viewMode, setViewMode] = useState('grid');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingRoom, setEditingRoom] = useState(null);
     const [deletingRoom, setDeletingRoom] = useState(null);
+    // state modal konfirmasi hapus fasilitas
+    const [deletingFacility, setDeletingFacility] = useState(null);
+    const [newFacility, setNewFacility] = useState('');
+    const [facilityOptions, setFacilityOptions] = useState(() => {
+        if (typeof window === 'undefined') return COMMON_FACILITIES;
+        try {
+            const saved = localStorage.getItem(FACILITIES_STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) return parsed;
+            }
+        } catch {
 
-    // Form Tambah Ruangan
+        }
+        return COMMON_FACILITIES;
+    });
+
+    const saveFacilityOptions = (next) => {
+        setFacilityOptions(next);
+        try {
+            localStorage.setItem(FACILITIES_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+
+        }
+    };
+
     const {
         data: createData,
         setData: setCreateData,
@@ -51,40 +79,48 @@ export default function MasterRooms({ rooms = [] }) {
         location: '',
         facilities: ['Proyektor HD', 'AC Sentral', 'Sound System & Mic Wireless'],
         description: '',
-        image_url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80',
+        image: null,
         color: '#0D9488',
         is_active: true,
     });
 
-    // Form Edit Ruangan
     const {
         data: editData,
         setData: setEditData,
-        put: putEdit,
+        post: postEdit,
         processing: submittingEdit,
         errors: editErrors,
         reset: resetEdit,
     } = useForm({
+        _method: 'put',
         name: '',
         code: '',
         capacity: 20,
         location: '',
         facilities: [],
         description: '',
+        image: null,
         image_url: '',
         color: '#0D9488',
         is_active: true,
     });
 
     const openEditModal = (room) => {
+        const roomFacilities = Array.isArray(room.facilities) ? [...room.facilities] : [];
+        const missingFromOptions = roomFacilities.filter((f) => !facilityOptions.includes(f));
+        if (missingFromOptions.length > 0) {
+            saveFacilityOptions([...facilityOptions, ...missingFromOptions]);
+        }
         setEditingRoom(room);
         setEditData({
+            _method: 'put',
             name: room.name,
             code: room.code || '',
             capacity: room.capacity || 20,
             location: room.location || '',
-            facilities: Array.isArray(room.facilities) ? [...room.facilities] : [],
+            facilities: roomFacilities,
             description: room.description || '',
+            image: null,
             image_url: room.image_url || '',
             color: room.color || '#0D9488',
             is_active: Boolean(room.is_active),
@@ -94,9 +130,15 @@ export default function MasterRooms({ rooms = [] }) {
     const handleCreateSubmit = (e) => {
         e.preventDefault();
         postCreate('/admin/master/rooms', {
+            forceFormData: true,
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 resetCreate();
+                toast.success('Ruangan baru berhasil ditambahkan!');
+            },
+            onError: (errs) => {
+                const firstErr = Object.values(errs)[0];
+                toast.error(firstErr || 'Gagal menyimpan ruangan. Periksa kembali form isian.');
             },
         });
     };
@@ -104,10 +146,16 @@ export default function MasterRooms({ rooms = [] }) {
     const handleEditSubmit = (e) => {
         e.preventDefault();
         if (!editingRoom) return;
-        putEdit(`/admin/master/rooms/${editingRoom.id}`, {
+        postEdit(`/admin/master/rooms/${editingRoom.id}`, {
+            forceFormData: true,
             onSuccess: () => {
                 setEditingRoom(null);
                 resetEdit();
+                toast.success('Data ruangan berhasil diperbarui!');
+            },
+            onError: (errs) => {
+                const firstErr = Object.values(errs)[0];
+                toast.error(firstErr || 'Gagal memperbarui data ruangan.');
             },
         });
     };
@@ -117,6 +165,10 @@ export default function MasterRooms({ rooms = [] }) {
         router.delete(`/admin/master/rooms/${deletingRoom.id}`, {
             onSuccess: () => {
                 setDeletingRoom(null);
+                toast.success('Ruangan berhasil dihapus.');
+            },
+            onError: () => {
+                toast.error('Gagal menghapus ruangan.');
             },
         });
     };
@@ -137,6 +189,103 @@ export default function MasterRooms({ rooms = [] }) {
                 setCreateData('facilities', [...current, facility]);
             }
         }
+    };
+
+    const handleAddFacility = () => {
+        const name = newFacility.trim();
+        if (!name) return;
+
+        const existing = facilityOptions.find((f) => f.toLowerCase() === name.toLowerCase());
+        if (!existing) {
+            saveFacilityOptions([...facilityOptions, name]);
+        }
+
+        setNewFacility('');
+    };
+
+    const handleRemoveFacility = () => {
+        if (!deletingFacility) return;
+        const facility = deletingFacility;
+        saveFacilityOptions(facilityOptions.filter((f) => f !== facility));
+        setCreateData('facilities', (createData.facilities || []).filter((f) => f !== facility));
+        setEditData('facilities', (editData.facilities || []).filter((f) => f !== facility));
+        setDeletingFacility(null);
+        toast.success(`Fasilitas "${facility}" dihapus dari daftar.`);
+    };
+
+    const renderFacilitySelector = (isEdit = false) => {
+        const selected = isEdit ? editData.facilities || [] : createData.facilities || [];
+        return (
+            <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Fasilitas Standar Tersedia</label>
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/70 space-y-2.5">
+                    {facilityOptions.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-2">
+                            Belum ada daftar fasilitas. Tambahkan fasilitas baru di bawah.
+                        </p>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {facilityOptions.map((fac) => {
+                                const checked = selected.includes(fac);
+                                return (
+                                    <div
+                                        key={fac}
+                                        className={`group flex items-center justify-between gap-1.5 p-2 rounded-xl text-xs font-semibold transition border ${
+                                            checked ? 'bg-teal-50 border-teal-300 text-teal-800' : 'bg-white border-slate-200/80 text-slate-600 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleFacility(fac, isEdit)}
+                                            className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                                        >
+                                            <Icon
+                                                icon={checked ? 'ph:check-square-fill' : 'ph:square'}
+                                                className={`w-4 h-4 shrink-0 ${checked ? 'text-teal-600' : 'text-slate-400'}`}
+                                            />
+                                            <span className="truncate">{fac}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDeletingFacility(fac)}
+                                            title={`Hapus "${fac}"`}
+                                            className="p-0.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition shrink-0"
+                                        >
+                                            <Icon icon="ph:x-bold" className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-200/70">
+                        <input
+                            type="text"
+                            value={newFacility}
+                            onChange={(e) => setNewFacility(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddFacility();
+                                }
+                            }}
+                            placeholder="Tambah fasilitas baru..."
+                            className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:border-brand-500 focus:ring-brand-500"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleAddFacility}
+                            disabled={!newFacility.trim()}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition disabled:opacity-40 shrink-0"
+                        >
+                            <Icon icon="ph:plus-bold" className="w-3.5 h-3.5" />
+                            <span>Tambah</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     const columns = [
@@ -238,23 +387,25 @@ export default function MasterRooms({ rooms = [] }) {
             label: 'Aksi',
             align: 'right',
             render: (r) => (
-                <div className="flex items-center justify-end gap-1.5">
-                    <button
-                        type="button"
-                        onClick={() => openEditModal(r)}
-                        className="p-1.5 rounded-lg text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition"
-                        title="Edit Ruangan"
-                    >
-                        <Icon icon="ph:pencil-simple-bold" className="w-4 h-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setDeletingRoom(r)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-                        title="Hapus Ruangan"
-                    >
-                        <Icon icon="ph:trash-bold" className="w-4 h-4" />
-                    </button>
+                <div className="flex items-center justify-center gap-1.5">
+                    <Tooltip text="Edit Ruangan">
+                        <button
+                            type="button"
+                            onClick={() => openEditModal(r)}
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition"
+                        >
+                            <Icon icon="ph:pencil-simple-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip text="Hapus Ruangan">
+                        <button
+                            type="button"
+                            onClick={() => setDeletingRoom(r)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                        >
+                            <Icon icon="ph:trash-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
                 </div>
             ),
         },
@@ -262,12 +413,12 @@ export default function MasterRooms({ rooms = [] }) {
 
     return (
         <AppLayout title="Master Ruangan - Admin Helpdesk">
-            {/* Header Hero */}
+
             <div
                 style={{ background: 'linear-gradient(135deg, #176B54 0%, #1B775E 50%, #125844 100%)' }}
                 className="relative overflow-hidden rounded-3xl text-white p-6 sm:p-8 mb-6 shadow-sm border border-emerald-900/20"
             >
-                {/* Subtle pattern background */}
+
                 <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px]" />
                 <div className="absolute -right-12 -bottom-12 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -279,7 +430,7 @@ export default function MasterRooms({ rooms = [] }) {
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">Master Ruangan Pertemuan</h1>
                         <p className="mt-1 text-xs sm:text-sm text-emerald-100/90 max-w-xl font-normal leading-relaxed">
-                            Kelola daftar ruangan rapat, aula, fasilitas pendukung, kapasitas peserta, dan ketersediaan ruangan untuk sistem peminjaman RS Antam Medika.
+                            Kelola daftar ruangan rapat, aula, fasilitas pendukung, kapasitas peserta, dan ketersediaan ruangan untuk peminjaman di RS Antam Medika.
                         </p>
                     </div>
 
@@ -296,58 +447,80 @@ export default function MasterRooms({ rooms = [] }) {
                 </div>
             </div>
 
-            {/* Quick Stats & View Mode Switcher */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full sm:w-auto">
-                    <div className="bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Ruangan</span>
-                        <p className="text-xl font-extrabold text-slate-900 mt-0.5">{rooms.length}</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span className="text-xs font-semibold text-slate-500">Total Ruangan</span>
+                        <p className="mt-1.5 text-2xl font-extrabold text-slate-900">{rooms.length}</p>
                     </div>
-                    <div className="bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Ruangan Aktif</span>
-                        <p className="text-xl font-extrabold text-emerald-600 mt-0.5">{rooms.filter((r) => r.is_active).length}</p>
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                        <Icon icon="ph:door-bold" className="w-5 h-5" />
                     </div>
-                    <div className="bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
-                        <span className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">Total Kapasitas</span>
-                        <p className="text-xl font-extrabold text-teal-700 mt-0.5">
-                            {rooms.reduce((acc, r) => acc + (r.capacity || 0), 0)} Kursi
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span className="text-xs font-semibold text-emerald-600">Ruangan Aktif</span>
+                        <p className="mt-1.5 text-2xl font-extrabold text-emerald-600">{rooms.filter((r) => r.is_active).length}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <Icon icon="ph:check-circle-bold" className="w-5 h-5" />
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span className="text-xs font-semibold text-teal-600">Total Kapasitas</span>
+                        <p className="mt-1.5 text-2xl font-extrabold text-teal-700">
+                            {rooms.reduce((acc, r) => acc + (r.capacity || 0), 0)} <span className="text-sm font-bold">Kursi</span>
                         </p>
                     </div>
-                    <div className="bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
-                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Booking Aktif</span>
-                        <p className="text-xl font-extrabold text-blue-600 mt-0.5">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+                        <Icon icon="ph:users-three-bold" className="w-5 h-5" />
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span className="text-xs font-semibold text-blue-600">Booking Aktif</span>
+                        <p className="mt-1.5 text-2xl font-extrabold text-blue-600">
                             {rooms.reduce((acc, r) => acc + (r.active_bookings_count || 0), 0)}
                         </p>
                     </div>
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <Icon icon="ph:calendar-check-bold" className="w-5 h-5" />
+                    </div>
                 </div>
+            </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto">
+            <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-sm font-bold text-slate-800">
+                    Daftar Ruangan <span className="text-slate-400 font-semibold">({rooms.length})</span>
+                </h2>
+
+                <div className="inline-flex items-center bg-white p-1 rounded-xl border border-slate-200/80 shadow-2xs">
                     <button
                         type="button"
                         onClick={() => setViewMode('grid')}
-                        className={`p-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 ${
-                            viewMode === 'grid' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                            viewMode === 'grid' ? 'bg-brand-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
                         }`}
-                        title="Tampilan Kartu Visual"
+                        title="Tampilan Kartu"
                     >
                         <Icon icon="ph:squares-four-bold" className="w-4 h-4" />
-                        <span className="hidden sm:inline">Katalog</span>
+                        <span>Katalog</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => setViewMode('table')}
-                        className={`p-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 ${
-                            viewMode === 'table' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                            viewMode === 'table' ? 'bg-brand-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
                         }`}
-                        title="Tampilan Tabel Data"
+                        title="Tampilan Tabel"
                     >
                         <Icon icon="ph:table-bold" className="w-4 h-4" />
-                        <span className="hidden sm:inline">Tabel</span>
+                        <span>Tabel</span>
                     </button>
                 </div>
             </div>
 
-            {/* Content: Grid Cards atau DataTable */}
             {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {rooms.map((room) => (
@@ -356,7 +529,7 @@ export default function MasterRooms({ rooms = [] }) {
                             className="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
                         >
                             <div>
-                                {/* Foto Cover Ruangan */}
+
                                 <div className="relative h-44 w-full overflow-hidden bg-slate-100">
                                     <img
                                         src={room.image_url || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80'}
@@ -402,7 +575,6 @@ export default function MasterRooms({ rooms = [] }) {
                                         {room.description || 'Tidak ada deskripsi khusus untuk ruangan ini.'}
                                     </p>
 
-                                    {/* Fasilitas Pills */}
                                     <div className="flex flex-wrap gap-1.5">
                                         {(room.facilities || []).slice(0, 4).map((f, i) => (
                                             <span
@@ -460,8 +632,14 @@ export default function MasterRooms({ rooms = [] }) {
                 </div>
             )}
 
-            {/* Modal Tambah Ruangan Baru */}
-            <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="2xl">
+            <Modal
+                show={isCreateModalOpen}
+                closeable={!deletingFacility}
+                onClose={() => {
+                    if (!deletingFacility) setIsCreateModalOpen(false);
+                }}
+                maxWidth="2xl"
+            >
                 <form onSubmit={handleCreateSubmit} className="p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                         <div className="flex items-center gap-2">
@@ -501,6 +679,7 @@ export default function MasterRooms({ rooms = [] }) {
                                     placeholder="R-MEDIK-01"
                                     className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"
                                 />
+                                {createErrors.code && <p className="text-[11px] text-red-600 mt-1">{createErrors.code}</p>}
                             </div>
                         </div>
 
@@ -515,6 +694,7 @@ export default function MasterRooms({ rooms = [] }) {
                                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"
                                     required
                                 />
+                                {createErrors.capacity && <p className="text-[11px] text-red-600 mt-1">{createErrors.capacity}</p>}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Lokasi / Lantai Gedung *</label>
@@ -526,55 +706,44 @@ export default function MasterRooms({ rooms = [] }) {
                                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"
                                     required
                                 />
+                                {createErrors.location && <p className="text-[11px] text-red-600 mt-1">{createErrors.location}</p>}
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1.5">Fasilitas Standar Tersedia</label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                                {COMMON_FACILITIES.map((fac) => {
-                                    const checked = (createData.facilities || []).includes(fac);
-                                    return (
-                                        <button
-                                            type="button"
-                                            key={fac}
-                                            onClick={() => toggleFacility(fac, false)}
-                                            className={`flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-left transition border ${
-                                                checked ? 'bg-teal-50 border-teal-300 text-teal-800' : 'bg-white border-slate-200/80 text-slate-600 hover:bg-slate-100'
-                                            }`}
-                                        >
-                                            <Icon
-                                                icon={checked ? 'ph:check-square-fill' : 'ph:square'}
-                                                className={`w-4 h-4 shrink-0 ${checked ? 'text-teal-600' : 'text-slate-400'}`}
-                                            />
-                                            <span className="truncate">{fac}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                        {renderFacilitySelector(false)}
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="sm:col-span-2">
-                                <label className="block text-xs font-bold text-slate-700 mb-1">URL Foto Sampul Ruangan</label>
-                                <input
-                                    type="url"
-                                    value={createData.image_url}
-                                    onChange={(e) => setCreateData('image_url', e.target.value)}
-                                    placeholder="https://..."
-                                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"
-                                />
+                                <label className="block text-xs font-bold text-slate-700 mb-1.5">Foto Sampul Ruangan</label>
+                                <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-dashed border-slate-300 hover:border-brand-400 bg-slate-50/70 hover:bg-brand-50/30 cursor-pointer transition">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <Icon icon="ph:upload-simple-bold" className="w-4 h-4 text-brand-600 shrink-0" />
+                                        <span className="text-xs text-slate-600 truncate">
+                                            {createData.image ? createData.image.name : 'Pilih foto ruangan (JPG, PNG, WEBP)'}
+                                        </span>
+                                    </div>
+                                    <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 shrink-0">
+                                        Upload
+                                    </span>
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="hidden"
+                                        onChange={(e) => setCreateData('image', e.target.files?.[0] || null)}
+                                    />
+                                </label>
+                                {createErrors.image && <p className="text-[11px] text-red-600 mt-1">{createErrors.image}</p>}
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Warna Label Kalender</label>
-                                <div className="flex items-center gap-1.5 mt-1">
+                                <label className="block text-xs font-bold text-slate-700 mb-1.5">Warna Label Kalender</label>
+                                <div className="flex items-center gap-2.5 h-[34px] pl-1">
                                     {PRESET_COLORS.map((c) => (
                                         <button
                                             type="button"
                                             key={c.value}
                                             onClick={() => setCreateData('color', c.value)}
-                                            className={`w-6 h-6 rounded-full transition-transform ${
-                                                createData.color === c.value ? 'scale-125 ring-2 ring-slate-900 ring-offset-2' : 'hover:scale-110'
+                                            className={`w-5 h-5 rounded-full transition-transform shrink-0 ${
+                                                createData.color === c.value ? 'scale-110 ring-2 ring-slate-900 ring-offset-2' : 'hover:scale-110'
                                             }`}
                                             style={{ backgroundColor: c.value }}
                                             title={c.label}
@@ -628,9 +797,15 @@ export default function MasterRooms({ rooms = [] }) {
                 </form>
             </Modal>
 
-            {/* Modal Edit Ruangan */}
             {editingRoom && (
-                <Modal show={Boolean(editingRoom)} onClose={() => setEditingRoom(null)} maxWidth="2xl">
+                <Modal
+                    show={Boolean(editingRoom)}
+                    closeable={!deletingFacility}
+                    onClose={() => {
+                        if (!deletingFacility) setEditingRoom(null);
+                    }}
+                    maxWidth="2xl"
+                >
                     <form onSubmit={handleEditSubmit} className="p-6">
                         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                             <div>
@@ -689,51 +864,40 @@ export default function MasterRooms({ rooms = [] }) {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1.5">Fasilitas Standar Tersedia</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                                    {COMMON_FACILITIES.map((fac) => {
-                                        const checked = (editData.facilities || []).includes(fac);
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={fac}
-                                                onClick={() => toggleFacility(fac, true)}
-                                                className={`flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-left transition border ${
-                                                    checked ? 'bg-teal-50 border-teal-300 text-teal-800' : 'bg-white border-slate-200/80 text-slate-600 hover:bg-slate-100'
-                                                }`}
-                                            >
-                                                <Icon
-                                                    icon={checked ? 'ph:check-square-fill' : 'ph:square'}
-                                                    className={`w-4 h-4 shrink-0 ${checked ? 'text-teal-600' : 'text-slate-400'}`}
-                                                />
-                                                <span className="truncate">{fac}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                            {renderFacilitySelector(true)}
 
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div className="sm:col-span-2">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">URL Foto Sampul</label>
-                                    <input
-                                        type="url"
-                                        value={editData.image_url}
-                                        onChange={(e) => setEditData('image_url', e.target.value)}
-                                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"
-                                    />
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Foto Sampul Ruangan</label>
+                                    <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-dashed border-slate-300 hover:border-brand-400 bg-slate-50/70 hover:bg-brand-50/30 cursor-pointer transition">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <Icon icon="ph:upload-simple-bold" className="w-4 h-4 text-brand-600 shrink-0" />
+                                            <span className="text-xs text-slate-600 truncate">
+                                                {editData.image ? editData.image.name : (editData.image_url ? 'Ganti foto ruangan...' : 'Pilih foto ruangan (JPG, PNG, WEBP)')}
+                                            </span>
+                                        </div>
+                                        <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 shrink-0">
+                                            Upload
+                                        </span>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            className="hidden"
+                                            onChange={(e) => setEditData('image', e.target.files?.[0] || null)}
+                                        />
+                                    </label>
+                                    {editErrors.image && <p className="text-[11px] text-red-600 mt-1">{editErrors.image}</p>}
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Warna Label Kalender</label>
-                                    <div className="flex items-center gap-1.5 mt-1">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Warna Label Kalender</label>
+                                    <div className="flex items-center gap-2.5 h-[34px] pl-1">
                                         {PRESET_COLORS.map((c) => (
                                             <button
                                                 type="button"
                                                 key={c.value}
                                                 onClick={() => setEditData('color', c.value)}
-                                                className={`w-6 h-6 rounded-full transition-transform ${
-                                                    editData.color === c.value ? 'scale-125 ring-2 ring-slate-900 ring-offset-2' : 'hover:scale-110'
+                                                className={`w-5 h-5 rounded-full transition-transform shrink-0 ${
+                                                    editData.color === c.value ? 'scale-110 ring-2 ring-slate-900 ring-offset-2' : 'hover:scale-110'
                                                 }`}
                                                 style={{ backgroundColor: c.value }}
                                                 title={c.label}
@@ -787,7 +951,6 @@ export default function MasterRooms({ rooms = [] }) {
                 </Modal>
             )}
 
-            {/* Modal Konfirmasi Hapus */}
             {deletingRoom && (
                 <Modal show={Boolean(deletingRoom)} onClose={() => setDeletingRoom(null)} maxWidth="sm">
                     <div className="p-6">
@@ -816,6 +979,42 @@ export default function MasterRooms({ rooms = [] }) {
                         </div>
                     </div>
                 </Modal>
+            )}
+
+            {deletingFacility && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+                    onClick={() => setDeletingFacility(null)}
+                >
+                    <div
+                        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl border border-slate-100"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+                            <Icon icon="ph:warning-bold" className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-sm font-bold text-slate-900 text-center">Hapus Fasilitas?</h3>
+                        <p className="text-xs text-slate-500 text-center mt-1">
+                            Apakah Anda yakin ingin menghapus fasilitas <strong>{deletingFacility}</strong> dari daftar pilihan?
+                        </p>
+                        <div className="mt-6 flex items-center justify-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setDeletingFacility(null)}
+                                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleRemoveFacility}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
+                            >
+                                Ya, Hapus Fasilitas
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </AppLayout>
     );

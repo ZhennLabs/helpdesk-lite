@@ -16,10 +16,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\SimpleExcel\SimpleExcelWriter;
 
 class AdminTicketController extends Controller
 {
-    // dashboard kelola tiket admin
+
     public function index(Request $request): Response
     {
         $query = Ticket::with([
@@ -30,13 +31,13 @@ class AdminTicketController extends Controller
             'messages' => function ($q) {
                 $q->with('user:id,name,role,avatar_url')->orderBy('created_at', 'asc');
             },
-        ])->latest('updated_at');
+        ])->latest('created_at');
 
         if ($request->filled('status')) {
             if ($request->status === 'resolved') {
                 $query->whereIn('status', ['resolved', 'closed']);
             } elseif ($request->status === 'history') {
-                // riwayat semua tiket
+
             } elseif ($request->status === 'sla_urgent') {
                 $query->whereIn('status', ['open', 'in_progress']);
             } elseif (in_array($request->status, ['open', 'in_progress', 'closed'])) {
@@ -45,7 +46,7 @@ class AdminTicketController extends Controller
                 $query->whereIn('status', ['open', 'in_progress']);
             }
         } else {
-            // default antrean aktif
+
             $query->whereIn('status', ['open', 'in_progress']);
         }
 
@@ -62,7 +63,7 @@ class AdminTicketController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = addcslashes($request->search, '%_\\');
             $query->where(function ($q) use ($search) {
                 $q->where('ticket_number', 'like', "%{$search}%")
                   ->orWhere('subject', 'like', "%{$search}%")
@@ -139,7 +140,6 @@ class AdminTicketController extends Controller
             })->values();
         }
 
-        // hitung statistik antrean admin dalam 1 query ringkas
         $statsRow = Ticket::selectRaw("
             count(*) as total,
             sum(case when status = 'open' then 1 else 0 end) as open_count,
@@ -148,6 +148,7 @@ class AdminTicketController extends Controller
         ")->first();
 
         $activeTicketsForSla = Ticket::whereIn('status', ['open', 'in_progress'])
+            ->select(['id', 'status', 'urgency_id', 'created_at', 'resolved_at'])
             ->with('urgency:id,name,color,level,sla_hours')
             ->get();
 
@@ -167,33 +168,83 @@ class AdminTicketController extends Controller
             'sla_urgent' => $slaUrgentCount,
         ];
 
-        // master data di-cache singkat
-        $categories = Cache::remember('active_ticket_categories', 60, fn () => 
-            TicketCategory::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'icon'])
+        $categories = Cache::remember('active_ticket_categories_v3', 60, fn () =>
+            TicketCategory::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'icon'])->toArray()
         );
-        $urgencies = Cache::remember('active_ticket_urgencies', 60, fn () => 
-            TicketUrgency::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'color', 'level', 'sla_hours'])
+        $urgencies = Cache::remember('active_ticket_urgencies_v3', 60, fn () =>
+            TicketUrgency::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'color', 'level', 'sla_hours'])->toArray()
         );
-        $units = Cache::remember('all_ticket_units', 60, fn () => 
-            Ticket::distinct()->whereNotNull('reporter_unit')->where('reporter_unit', '!=', '')->orderBy('reporter_unit')->pluck('reporter_unit')
+        $units = Cache::remember('all_ticket_units_v3', 60, fn () =>
+            Ticket::distinct()->whereNotNull('reporter_unit')->where('reporter_unit', '!=', '')->orderBy('reporter_unit')->pluck('reporter_unit')->toArray()
         );
-        $admins = Cache::remember('active_admins_list', 60, fn () => 
-            User::where('role', 'admin')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar_url'])
+        $admins = Cache::remember('active_admins_list_v3', 60, fn () =>
+            User::where('role', 'admin')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar_url'])->toArray()
         );
 
+        // data grafik bulanan & distribusi kategori
+        $selectedYear = (int) ($request->input('year') ?: now()->year);
+        $yearTickets = Ticket::whereYear('created_at', $selectedYear)
+            ->get(['id', 'status', 'created_at', 'resolved_at']);
+
+        $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        $monthlyChart = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $masuk = $yearTickets->filter(fn ($t) => $t->created_at && (int) $t->created_at->month === $m)->count();
+            $selesai = $yearTickets->filter(function ($t) use ($m) {
+                if (!in_array($t->status, ['resolved', 'closed'], true)) {
+                    return false;
+                }
+                $refDate = $t->resolved_at ?: $t->created_at;
+                return $refDate && (int) $refDate->month === $m;
+            })->count();
+
+            $monthlyChart[] = [
+                'month' => $monthNames[$m - 1],
+                'masuk' => $masuk,
+                'selesai' => $selesai,
+            ];
+        }
+
+        $categoryDistribution = TicketCategory::where('is_active', true)
+            ->withCount('tickets')
+            ->orderByDesc('tickets_count')
+            ->get(['id', 'name'])
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'count' => (int) $c->tickets_count,
+            ])
+            ->values()
+            ->all();
+
+        $availableYears = Ticket::selectRaw('YEAR(created_at) as yr')
+            ->distinct()
+            ->pluck('yr')
+            ->filter()
+            ->map(fn ($y) => (int) $y)
+            ->push((int) now()->year)
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->all();
+
         return Inertia::render('Helpdesk/Admin/Dashboard', [
-            'tickets' => $tickets,
+            'tickets' => $tickets->values()->all(),
             'stats' => $stats,
-            'categories' => $categories,
-            'urgencies' => $urgencies,
-            'units' => $units,
-            'admins' => $admins,
-            'filters' => $request->only(['status', 'category_id', 'urgency_id', 'unit', 'search']),
+            'categories' => is_array($categories) ? $categories : [],
+            'urgencies' => is_array($urgencies) ? $urgencies : [],
+            'units' => is_array($units) ? $units : [],
+            'admins' => is_array($admins) ? $admins : [],
+            'monthly_chart' => $monthlyChart,
+            'category_distribution' => $categoryDistribution,
+            'available_years' => $availableYears,
+            'selected_year' => $selectedYear,
+            'filters' => $request->only(['status', 'category_id', 'urgency_id', 'unit', 'search', 'year']),
         ]);
     }
 
-    // log & riwayat tiket
-    public function logs(Request $request): Response
+    // siapkan data log aktivitas dan statistiknya
+    private function buildLogsData(): array
     {
         $messages = TicketMessage::with([
             'ticket:id,ticket_number,subject,reporter_unit,reporter_sub_unit,category_id',
@@ -235,6 +286,7 @@ class AdminTicketController extends Controller
                 'message' => $text,
                 'attachments' => $msg->attachments ?? [],
                 'created_at' => $msg->created_at?->translatedFormat('d M Y, H:i') ?? '-',
+                'created_date' => $msg->created_at?->format('Y-m-d') ?? '',
                 'created_at_human' => $msg->created_at?->diffForHumans() ?? '-',
                 'timestamp' => $msg->created_at?->timestamp ?? 0,
                 'ticket_number' => $msg->ticket?->ticket_number ?? '-',
@@ -250,7 +302,7 @@ class AdminTicketController extends Controller
             ];
         })->values();
 
-        return Inertia::render('Admin/Logs', [
+        return [
             'logs' => $logs,
             'stats' => [
                 'total' => $logs->count(),
@@ -259,11 +311,66 @@ class AdminTicketController extends Controller
                 'assignments' => $assignCount,
                 'messages' => $messageCount,
             ],
+        ];
+    }
+
+    public function logs(Request $request): Response
+    {
+        $data = $this->buildLogsData();
+
+        return Inertia::render('Admin/Logs', [
+            'logs' => $data['logs'],
+            'stats' => $data['stats'],
             'filters' => $request->only(['type']),
         ]);
     }
 
-    // perbarui status tiket
+    public function exportLogs(Request $request)
+    {
+        $logs = $this->buildLogsData()['logs'];
+
+        $filtered = $logs->filter(function ($row) use ($request) {
+            if ($request->filled('type') && $request->type !== 'all' && $row['type'] !== $request->type) {
+                return false;
+            }
+            if ($request->filled('unit') && $row['ticket_unit'] !== $request->unit) {
+                return false;
+            }
+            if ($request->filled('category') && ($row['category']['name'] ?? '') !== $request->category) {
+                return false;
+            }
+            if ($request->filled('role') && ($row['user']['role'] ?? '') !== $request->role) {
+                return false;
+            }
+            if ($request->filled('date_from') && $row['created_date'] < $request->date_from) {
+                return false;
+            }
+            if ($request->filled('date_to') && $row['created_date'] > $request->date_to) {
+                return false;
+            }
+            return true;
+        });
+
+        $writer = SimpleExcelWriter::streamDownload('log-aktivitas-' . now()->format('Y-m-d') . '.xlsx');
+
+        foreach ($filtered as $row) {
+            $writer->addRow([
+                'Waktu' => $row['created_at'],
+                'No. Tiket' => $row['ticket_number'],
+                'Subjek Tiket' => $row['ticket_subject'],
+                'Kategori' => $row['category']['name'] ?? '-',
+                'Pelaku' => $row['user']['name'] ?? 'Sistem',
+                'Peran' => ($row['user']['role'] ?? '') === 'admin' ? 'Admin' : 'Pengguna',
+                'Tipe Log' => $row['type_label'],
+                'Unit Kerja' => $row['ticket_unit'],
+                'Sub Unit' => $row['ticket_sub_unit'],
+                'Isi Catatan' => $row['message'],
+            ]);
+        }
+
+        return $writer->toBrowser();
+    }
+
     public function updateStatus(Request $request, Ticket $ticket): RedirectResponse
     {
         $request->validate([
@@ -301,7 +408,6 @@ class AdminTicketController extends Controller
             ]);
         }
 
-        // bersihin cache sla summary
         Cache::forget('admin_sla_alerts_summary');
 
         broadcast(new TicketUpdated(
@@ -314,7 +420,6 @@ class AdminTicketController extends Controller
         return redirect()->back()->with('success', "Status tiket {$ticket->ticket_number} berhasil diperbarui.");
     }
 
-    // balas tiket dari admin
     public function reply(Request $request, Ticket $ticket): RedirectResponse
     {
         $request->validate([
@@ -370,3 +475,4 @@ class AdminTicketController extends Controller
         return redirect()->back()->with('success', 'Balasan berhasil dikirim.');
     }
 }
+

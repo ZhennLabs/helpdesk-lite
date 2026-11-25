@@ -3,18 +3,130 @@ import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
+import Tooltip from '@/Components/Tooltip';
+import { jsPDF } from 'jspdf';
 
 export default function Logs({ logs = [], stats = {}, filters = {} }) {
     const [selectedType, setSelectedType] = useState(filters.type || 'all');
+    const [unitFilter, setUnitFilter] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('');
+    const [roleFilter, setRoleFilter] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [detailLog, setDetailLog] = useState(null);
 
-    // Filter logs berdasarkan tab tipe
-    const filteredLogs = useMemo(() => {
-        if (selectedType === 'all') return logs;
-        return logs.filter((l) => l.type === selectedType);
-    }, [logs, selectedType]);
+    const uniqueUnits = useMemo(() => {
+        return [...new Set(logs.map((l) => l.ticket_unit).filter((u) => u && u !== '-'))].sort();
+    }, [logs]);
 
-    // Format tipe badge
+    const uniqueCategories = useMemo(() => {
+        return [...new Set(logs.map((l) => l.category?.name).filter(Boolean))].sort();
+    }, [logs]);
+
+    const hasActiveFilters = Boolean(unitFilter || categoryFilter || roleFilter || dateFrom || dateTo || selectedType !== 'all');
+
+    const resetFilters = () => {
+        setSelectedType('all');
+        setUnitFilter('');
+        setCategoryFilter('');
+        setRoleFilter('');
+        setDateFrom('');
+        setDateTo('');
+    };
+
+    // filter log berdasarkan tab, unit, kategori, peran, dan tanggal
+    const filteredLogs = useMemo(() => {
+        return logs.filter((l) => {
+            if (selectedType !== 'all' && l.type !== selectedType) return false;
+            if (unitFilter && l.ticket_unit !== unitFilter) return false;
+            if (categoryFilter && l.category?.name !== categoryFilter) return false;
+            if (roleFilter && l.user?.role !== roleFilter) return false;
+            if (dateFrom && l.created_date && l.created_date < dateFrom) return false;
+            if (dateTo && l.created_date && l.created_date > dateTo) return false;
+            return true;
+        });
+    }, [logs, selectedType, unitFilter, categoryFilter, roleFilter, dateFrom, dateTo]);
+
+    const exportToPdf = () => {
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        let y = 14;
+
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Log Aktivitas & Riwayat Tiket - Helpdesk Lite', 14, y);
+        y += 5;
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100);
+        doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')} | Total Data: ${filteredLogs.length}`, 14, y);
+        y += 7;
+
+        const cols = [
+            { label: 'Waktu', x: 14, w: 30 },
+            { label: 'No. Tiket', x: 45, w: 28 },
+            { label: 'Pelaku', x: 74, w: 38 },
+            { label: 'Tipe', x: 113, w: 30 },
+            { label: 'Unit', x: 144, w: 34 },
+            { label: 'Isi Catatan', x: 179, w: pageW - 193 },
+        ];
+
+        const drawHeader = () => {
+            doc.setFillColor(241, 245, 249);
+            doc.rect(14, y, pageW - 28, 7, 'F');
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 41, 59);
+            cols.forEach((c) => doc.text(c.label, c.x + 1, y + 4.8));
+            y += 9;
+        };
+
+        drawHeader();
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(51, 65, 85);
+
+        filteredLogs.forEach((row) => {
+            const msgLines = doc.splitTextToSize(row.message || '-', cols[5].w - 2);
+            const rowH = Math.max(6, msgLines.length * 3.8 + 2.5);
+
+            if (y + rowH > pageH - 12) {
+                doc.addPage();
+                y = 14;
+                drawHeader();
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7.5);
+                doc.setTextColor(51, 65, 85);
+            }
+
+            doc.text((row.created_at || '-').slice(0, 18), cols[0].x + 1, y + 3.5);
+            doc.text((row.ticket_number || '-').slice(0, 16), cols[1].x + 1, y + 3.5);
+            doc.text((row.user?.name || 'Sistem').slice(0, 22), cols[2].x + 1, y + 3.5);
+            doc.text((row.type_label || '-').slice(0, 18), cols[3].x + 1, y + 3.5);
+            doc.text((row.ticket_unit || '-').slice(0, 20), cols[4].x + 1, y + 3.5);
+            doc.text(msgLines, cols[5].x + 1, y + 3.5);
+
+            doc.setDrawColor(226, 232, 240);
+            doc.line(14, y + rowH - 0.5, pageW - 14, y + rowH - 0.5);
+            y += rowH;
+        });
+
+        doc.save(`log-aktivitas-${new Date().toISOString().slice(0, 10)}.pdf`);
+    };
+
+    const exportToExcel = () => {
+        const params = new URLSearchParams();
+        if (selectedType !== 'all') params.set('type', selectedType);
+        if (unitFilter) params.set('unit', unitFilter);
+        if (categoryFilter) params.set('category', categoryFilter);
+        if (roleFilter) params.set('role', roleFilter);
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
+        window.location.href = `/admin/logs/export?${params.toString()}`;
+    };
+
     const renderTypeBadge = (row) => {
         const type = row.type;
         const typeLabel = row.type_label;
@@ -58,7 +170,7 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
             sortable: true,
             sortFn: (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
             render: (row) => (
-                <div className="flex flex-col">
+                <div className="flex flex-col whitespace-nowrap">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <Icon icon="ph:clock-bold" className="w-3.5 h-3.5 text-slate-400" />
                         {row.created_at}
@@ -77,7 +189,7 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
             render: (row) => (
                 <div className="flex flex-col max-w-[220px]">
                     <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200/60 inline-flex items-center gap-1">
+                        <span className="font-mono text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200/60 inline-flex items-center gap-1 whitespace-nowrap">
                             <Icon icon="ph:ticket-bold" className="w-3 h-3" />
                             {row.ticket_number}
                         </span>
@@ -112,8 +224,8 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
                                 {row.user?.name || 'Sistem'}
                             </p>
                             <span className={`inline-block text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
-                                isAdmin 
-                                    ? 'bg-indigo-50 text-indigo-700' 
+                                isAdmin
+                                    ? 'bg-indigo-50 text-indigo-700'
                                     : 'bg-emerald-50 text-emerald-700'
                             }`}>
                                 {isAdmin ? 'Admin' : 'Pengguna'}
@@ -126,18 +238,18 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
         {
             key: 'type',
             label: 'Tipe Log',
-            align: 'left',
+            align: 'center',
             sortable: true,
             render: (row) => renderTypeBadge(row),
         },
         {
             key: 'message',
             label: 'Isi Log / Catatan',
-            align: 'left',
+            align: 'justify',
             sortable: false,
             render: (row) => (
                 <div className="max-w-md">
-                    <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-normal">
+                    <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-normal text-justify">
                         {row.message}
                     </p>
                     {row.attachments && row.attachments.length > 0 && (
@@ -152,7 +264,7 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
         {
             key: 'ticket_unit',
             label: 'Unit Kerja',
-            align: 'left',
+            align: 'center',
             sortable: true,
             render: (row) => (
                 <div className="text-xs text-slate-600 max-w-[150px] truncate">
@@ -169,25 +281,25 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
             align: 'right',
             sortable: false,
             render: (row) => (
-                <div className="flex items-center justify-end gap-1.5">
-                    <button
-                        type="button"
-                        onClick={() => setDetailLog(row)}
-                        className="px-2 py-1 text-slate-600 hover:text-brand-700 hover:bg-brand-50 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition"
-                        title="Lihat Detail Log"
-                    >
-                        <Icon icon="ph:eye-bold" className="w-3.5 h-3.5" />
-                        <span>Detail</span>
-                    </button>
-                    {row.ticket_number && row.ticket_number !== '-' && (
-                        <Link
-                            href={`/admin/dashboard?search=${encodeURIComponent(row.ticket_number)}`}
-                            className="px-2 py-1 text-brand-600 hover:text-brand-800 hover:bg-brand-50 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition"
-                            title="Buka Tiket di Dashboard"
+                <div className="flex items-center justify-center gap-1.5">
+                    <Tooltip text="Lihat Detail Log">
+                        <button
+                            type="button"
+                            onClick={() => setDetailLog(row)}
+                            className="p-1.5 text-slate-600 hover:text-brand-700 hover:bg-brand-50 rounded-lg transition"
                         >
-                            <Icon icon="ph:arrow-square-out-bold" className="w-3.5 h-3.5" />
-                            <span>Tiket</span>
-                        </Link>
+                            <Icon icon="ph:eye-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
+                    {row.ticket_number && row.ticket_number !== '-' && (
+                        <Tooltip text="Buka Tiket di Dashboard">
+                            <Link
+                                href={`/admin/dashboard?search=${encodeURIComponent(row.ticket_number)}`}
+                                className="p-1.5 text-brand-600 hover:text-brand-800 hover:bg-brand-50 rounded-lg transition"
+                            >
+                                <Icon icon="ph:arrow-square-out-bold" className="w-4 h-4" />
+                            </Link>
+                        </Tooltip>
                     )}
                 </div>
             ),
@@ -196,7 +308,7 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
 
     return (
         <AppLayout title="Log Aktivitas & Riwayat - Admin">
-            {/* Consistent Standard Header */}
+
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -204,11 +316,29 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
                         <span>Log Aktivitas & Riwayat Tiket</span>
                     </h1>
                     <p className="mt-1 text-xs text-slate-500">
-                        Catatan audit seluruh interaksi tiket, penanganan langsung admin, dan percakapan tanggapan.
+                        Catatan seluruh aktivitas tiket, pembaruan status, dan percakapan tanggapan.
                     </p>
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <Tooltip text="Export ke PDF">
+                        <button
+                            type="button"
+                            onClick={exportToPdf}
+                            className="p-2.5 bg-white hover:bg-rose-50 text-rose-600 rounded-xl border border-slate-200/80 hover:border-rose-200 shadow-xs transition"
+                        >
+                            <Icon icon="ph:file-pdf-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip text="Export ke Excel">
+                        <button
+                            type="button"
+                            onClick={exportToExcel}
+                            className="p-2.5 bg-white hover:bg-emerald-50 text-emerald-600 rounded-xl border border-slate-200/80 hover:border-emerald-200 shadow-xs transition"
+                        >
+                            <Icon icon="ph:file-xls-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
                     <Link
                         href="/admin/dashboard"
                         className="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200/80 shadow-xs transition"
@@ -219,7 +349,6 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
                 </div>
             </div>
 
-            {/* Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
                     <div className="flex items-center justify-between">
@@ -262,7 +391,6 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
                 </div>
             </div>
 
-            {/* Quick Filter Tabs */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
                 <button
                     type="button"
@@ -314,16 +442,77 @@ export default function Logs({ logs = [], stats = {}, filters = {} }) {
                 </button>
             </div>
 
-            {/* DataTable */}
             <DataTable
                 columns={columns}
                 data={filteredLogs}
                 searchPlaceholder="Cari nomor tiket, nama pelaku, atau isi catatan..."
                 defaultSort={{ key: 'created_at', direction: 'desc' }}
                 emptyMessage="Belum ada riwayat aktivitas log tercatat."
+                filterSlot={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <select
+                            value={unitFilter}
+                            onChange={(e) => setUnitFilter(e.target.value)}
+                            className="py-1.5 px-3 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:ring-brand-500 shadow-2xs"
+                        >
+                            <option value="">Semua Unit</option>
+                            {uniqueUnits.map((u) => (
+                                <option key={u} value={u}>{u}</option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={categoryFilter}
+                            onChange={(e) => setCategoryFilter(e.target.value)}
+                            className="py-1.5 px-3 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:ring-brand-500 shadow-2xs"
+                        >
+                            <option value="">Semua Kategori</option>
+                            {uniqueCategories.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className="py-1.5 px-3 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:ring-brand-500 shadow-2xs"
+                        >
+                            <option value="">Semua Pelaku</option>
+                            <option value="admin">Admin</option>
+                            <option value="user">Pengguna</option>
+                        </select>
+
+                        <input
+                            type="date"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                            title="Dari Tanggal"
+                            className="py-1.5 px-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:ring-brand-500 shadow-2xs"
+                        />
+
+                        <input
+                            type="date"
+                            value={dateTo}
+                            onChange={(e) => setDateTo(e.target.value)}
+                            title="Sampai Tanggal"
+                            className="py-1.5 px-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:ring-brand-500 shadow-2xs"
+                        />
+
+                        {hasActiveFilters && (
+                            <Tooltip text="Reset Filter">
+                                <button
+                                    type="button"
+                                    onClick={resetFilters}
+                                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition"
+                                >
+                                    <Icon icon="ph:arrow-counter-clockwise-bold" className="w-4 h-4" />
+                                </button>
+                            </Tooltip>
+                        )}
+                    </div>
+                }
             />
 
-            {/* Modal Detail Log */}
             {detailLog && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
                     <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95">

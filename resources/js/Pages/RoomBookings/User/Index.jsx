@@ -39,8 +39,8 @@ export default function UserRoomBookings({
             if (p.get('tab') === 'timeline' || p.get('view') === 'timeline') return 'timeline';
         }
         return 'catalog';
-    }); // 'catalog' | 'timeline' | 'my_bookings'
-    const [zoomMode, setZoomMode] = useState('month'); // 'month' | 'day'
+    });
+    const [zoomMode, setZoomMode] = useState('month');
     const timelineScrollRef = useRef(null);
     const [filterDate, setFilterDate] = useState(selected_date || new Date().toISOString().split('T')[0]);
     const [selectedRoomForBooking, setSelectedRoomForBooking] = useState(null);
@@ -67,7 +67,7 @@ export default function UserRoomBookings({
     const [isDeleteMode, setIsDeleteMode] = useState(false);
     const [selectedFacilitiesToDelete, setSelectedFacilitiesToDelete] = useState([]);
 
-    // Form Booking Ruangan
+
     const {
         data: bookingData,
         setData: setBookingData,
@@ -89,7 +89,7 @@ export default function UserRoomBookings({
         extra_facilities: [],
     });
 
-    // Realtime Reverb Listener untuk Kalender Booking
+
     useEffect(() => {
         if (typeof window === 'undefined' || !window.Echo) return;
 
@@ -110,14 +110,14 @@ export default function UserRoomBookings({
         };
     }, []);
 
-    // Filter tanggal berubah
+
     const handleDateChange = (newDate) => {
         setFilterDate(newDate);
         setBookingData('booking_date', newDate);
         router.get('/room-bookings', { date: newDate }, { preserveState: true, replace: true });
     };
 
-    // Gantt Chart State & Helpers
+
     const todayDateStr = useMemo(() => {
         const d = new Date();
         const y = d.getFullYear();
@@ -160,7 +160,7 @@ export default function UserRoomBookings({
             const day = String(d.getDate()).padStart(2, '0');
             handleDateChange(`${y}-${m}-${day}`);
         } catch {
-            // fallback
+
         }
     };
 
@@ -214,7 +214,7 @@ export default function UserRoomBookings({
                     return parseInt(parts[2], 10);
                 }
             } catch {
-                // fallback
+
             }
         }
         return null;
@@ -233,7 +233,7 @@ export default function UserRoomBookings({
             const day = String(d.getDate()).padStart(2, '0');
             handleDateChange(`${y}-${m}-${day}`);
         } catch {
-            // fallback
+
         }
     };
 
@@ -329,7 +329,7 @@ export default function UserRoomBookings({
     useEffect(() => {
         if (activeTab !== 'timeline') return;
 
-        // Multi-tick scroll to ensure it directly jumps to today
+
         scrollToToday(false);
 
         const rAF = requestAnimationFrame(() => {
@@ -438,7 +438,7 @@ export default function UserRoomBookings({
             case 'in_use':
                 return {
                     bar: 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 border-blue-300 shadow-blue-900/20 text-white ring-2 ring-blue-400/60',
-                    badgeBg: 'bg-blue-950/40 text-cyan-200 border border-cyan-400/40 animate-pulse',
+                    badgeBg: 'bg-blue-950/40 text-cyan-200 border border-cyan-400/40',
                     label: 'LIVE',
                     icon: 'ph:broadcast-bold',
                 };
@@ -491,7 +491,7 @@ export default function UserRoomBookings({
         setIsBookingModalOpen(true);
     };
 
-    // Deteksi bentrok lokal secara instan pada form booking
+
     const activeRoom = useMemo(() => {
         return rooms.find((r) => r.id === Number(bookingData.room_id)) || selectedRoomForBooking;
     }, [rooms, bookingData.room_id, selectedRoomForBooking]);
@@ -600,7 +600,7 @@ export default function UserRoomBookings({
             case 'approved':
                 return { label: 'Disetujui', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' };
             case 'in_use':
-                return { label: 'Sedang Berlangsung', bg: 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse', dot: 'bg-blue-500' };
+                return { label: 'Sedang Berlangsung', bg: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' };
             case 'completed':
                 return { label: 'Selesai', bg: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-400' };
             case 'rejected':
@@ -612,7 +612,7 @@ export default function UserRoomBookings({
         }
     };
 
-    // Format tanggal
+
     const formattedSelectedDate = useMemo(() => {
         try {
             const d = new Date(filterDate + 'T00:00:00');
@@ -624,12 +624,12 @@ export default function UserRoomBookings({
 
     return (
         <AppLayout title="Peminjaman Ruangan & Aula - RS Antam Medika">
-            {/* Hero Header */}
+
             <div
                 style={{ background: 'linear-gradient(135deg, #176B54 0%, #1B775E 50%, #125844 100%)' }}
                 className="relative overflow-hidden rounded-3xl text-white p-6 sm:p-8 lg:p-10 mb-6 shadow-sm border border-emerald-900/20"
             >
-                {/* Subtle pattern background */}
+
                 <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px]" />
                 <div className="absolute -right-12 -bottom-12 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -668,7 +668,7 @@ export default function UserRoomBookings({
                         </div>
                     </div>
 
-                    {/* Stats Ringkasan Header */}
+
                     <div className="grid grid-cols-2 gap-3 shrink-0 self-stretch md:self-auto">
                         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-center min-w-[120px]">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-200">Total Ruangan</span>
@@ -684,9 +684,9 @@ export default function UserRoomBookings({
                 </div>
             </div>
 
-            {/* Navigasi Tab & Kontrol Tanggal */}
+
             <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/80 shadow-xs mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
-                {/* Tab Switcher */}
+
                 <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-2xl w-full md:w-auto">
                     <button
                         type="button"
@@ -725,7 +725,7 @@ export default function UserRoomBookings({
                     </button>
                 </div>
 
-                {/* Date Navigator Picker */}
+
                 <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
                     <button
                         type="button"
@@ -761,7 +761,7 @@ export default function UserRoomBookings({
                 </div>
             </div>
 
-            {/* Banner Tanggal Aktif */}
+
             <div className="flex items-center justify-between mb-4 px-1">
                 <div className="flex items-center gap-2">
                     <Icon icon="ph:calendar-check-bold" className="w-4 h-4 text-teal-600" />
@@ -774,7 +774,7 @@ export default function UserRoomBookings({
                 </span>
             </div>
 
-            {/* TAB 1: KATALOG RUANGAN */}
+
             {activeTab === 'catalog' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {rooms.map((room) => {
@@ -786,7 +786,7 @@ export default function UserRoomBookings({
                                 className="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
                             >
                                 <div>
-                                    {/* Cover Image */}
+
                                     <div className="relative h-48 w-full overflow-hidden bg-slate-100">
                                         <img
                                             src={room.image_url || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80'}
@@ -834,7 +834,7 @@ export default function UserRoomBookings({
                                             {room.description || 'Ruangan pertemuan standar rumah sakit.'}
                                         </p>
 
-                                        {/* Fasilitas */}
+
                                         <div className="flex flex-wrap gap-1.5 mb-4">
                                             {(room.facilities || []).map((f, i) => (
                                                 <span
@@ -847,7 +847,7 @@ export default function UserRoomBookings({
                                             ))}
                                         </div>
 
-                                        {/* Jadwal Hari Terpilih */}
+
                                         <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
                                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
                                                 Pemakaian pada {formattedSelectedDate.split(',')[0]}
@@ -899,7 +899,7 @@ export default function UserRoomBookings({
                 </div>
             )}
 
-            {/* TAB 2: WHITE MODERN GANTT CHART VIEW */}
+
             {activeTab === 'timeline' && (
                 <div className="space-y-4">
                     <style>{`
@@ -917,11 +917,11 @@ export default function UserRoomBookings({
                         }
                     `}</style>
 
-                    {/* White Gantt Chart Card Container */}
+
                     <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm overflow-hidden text-slate-800">
-                        {/* Top Header Bar: » Oktober 2026 | [Katalog Ruangan] Bulan ⌄ < Hari ini > */}
+
                         <div className="bg-white border-b border-slate-200/90 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 select-none">
-                            {/* Left: » Bulan Tahun + Badge */}
+
                             <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2">
                                     <Icon icon="ph:caret-double-right-bold" className="w-4 h-4 text-teal-600 shrink-0" />
@@ -935,7 +935,7 @@ export default function UserRoomBookings({
                                 </span>
                             </div>
 
-                            {/* Right Controls: [Katalog Ruangan] | Bulan ⌄ | < Hari ini > */}
+
                             <div className="flex items-center gap-2 sm:gap-3">
                                 <button
                                     type="button"
@@ -948,7 +948,7 @@ export default function UserRoomBookings({
                                     <span className="sm:hidden">Katalog</span>
                                 </button>
 
-                                {/* Dropdown Bulan / Hari */}
+
                                 <div className="relative">
                                     <select
                                         value={zoomMode}
@@ -961,7 +961,7 @@ export default function UserRoomBookings({
                                     <Icon icon="ph:caret-down-bold" className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 </div>
 
-                                {/* Stepper < Hari ini > */}
+
                                 <div className="flex items-center gap-0.5 bg-slate-50 border border-slate-200/80 p-0.5 rounded-xl text-xs font-bold text-slate-700">
                                     <button
                                         type="button"
@@ -995,21 +995,21 @@ export default function UserRoomBookings({
                             </div>
                         </div>
 
-                        {/* Timeline Canvas with Horizontal Scroll */}
+
                         <div
                             ref={timelineScrollRef}
                             className="overflow-x-auto white-gantt-scroll relative select-none"
                         >
                             <div className={zoomMode === 'month' ? 'min-w-[2488px]' : 'min-w-[1600px]'}>
-                                {/* Timeline Ruler Header */}
+
                                 <div className="flex border-b border-slate-200 bg-slate-50/90 backdrop-blur-xs h-11 sticky top-0 z-30">
-                                    {/* Left Sticky Header Cell */}
+
                                     <div className="w-64 min-w-[256px] shrink-0 border-r border-slate-200 bg-slate-50 sticky left-0 z-40 px-4 flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                         <span>RUANGAN</span>
                                         <span className="text-[10px] text-slate-500 font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-slate-200/80">{rooms.length} unit</span>
                                     </div>
 
-                                    {/* Ruler Time / Day Columns */}
+
                                     {zoomMode === 'month' ? (
                                         <div className="flex-1 flex relative">
                                             {monthDays.map((day) => {
@@ -1040,7 +1040,7 @@ export default function UserRoomBookings({
                                                 );
                                             })}
 
-                                            {/* Today Coral/Red Vertical Marker Line */}
+
                                             {todayDayNumber !== null && (
                                                 <div
                                                     id="timeline-today-pin"
@@ -1050,7 +1050,7 @@ export default function UserRoomBookings({
                                             )}
                                         </div>
                                     ) : (
-                                        /* Day Mode Ruler (14 Hours: 07:00 - 21:00) */
+
                                         <div className="flex-1 flex relative">
                                             {[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((hour) => (
                                                 <div
@@ -1061,7 +1061,7 @@ export default function UserRoomBookings({
                                                 </div>
                                             ))}
 
-                                            {/* Today Realtime Marker Line */}
+
                                             {isToday && currentTime.decimal >= 7 && currentTime.decimal <= 21 && (
                                                 <div
                                                     id="timeline-today-pin"
@@ -1075,7 +1075,7 @@ export default function UserRoomBookings({
                                     )}
                                 </div>
 
-                                {/* Body Rows per Ruangan */}
+
                                 <div className="divide-y divide-slate-100">
                                     {rooms.map((room) => {
                                         const roomMonthBookings = getRoomMonthBookings(room);
@@ -1094,7 +1094,7 @@ export default function UserRoomBookings({
                                                 style={{ minHeight: `${rowHeightPx}px` }}
                                                 className="flex group/row hover:bg-slate-50/40 transition relative"
                                             >
-                                                {/* Left Sticky Room Info */}
+
                                                 <div className="w-64 min-w-[256px] shrink-0 border-r border-slate-200 bg-white sticky left-0 z-20 px-4 py-3 flex items-center justify-between gap-2 group-hover/row:bg-slate-50/90 transition select-none">
                                                     <div className="flex items-center gap-2.5 min-w-0">
                                                         <span
@@ -1133,9 +1133,9 @@ export default function UserRoomBookings({
                                                     </div>
                                                 </div>
 
-                                                {/* Right Track Area */}
+
                                                 {zoomMode === 'month' ? (
-                                                    /* Month Mode Track: 31 Day Columns */
+
                                                     <div className="flex-1 flex relative">
                                                         {monthDays.map((day) => (
                                                             <div
@@ -1152,7 +1152,7 @@ export default function UserRoomBookings({
                                                             </div>
                                                         ))}
 
-                                                        {/* Booking Cards in Month Mode */}
+
                                                         {monthLanesList.map((b) => {
                                                             const isApproved = b.status === 'approved';
                                                             const isInUse = b.status === 'in_use';
@@ -1175,7 +1175,7 @@ export default function UserRoomBookings({
                                                                         isApproved
                                                                             ? 'bg-emerald-50 border-emerald-300 text-emerald-950 hover:bg-emerald-100'
                                                                             : isInUse
-                                                                            ? 'bg-blue-50 border-blue-400 text-blue-950 ring-2 ring-blue-400/60 animate-pulse'
+                                                                            ? 'bg-blue-50 border-blue-400 text-blue-950 ring-2 ring-blue-400/60'
                                                                             : isPending
                                                                             ? 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100'
                                                                             : 'bg-slate-100 border-slate-300 text-slate-800'
@@ -1211,7 +1211,7 @@ export default function UserRoomBookings({
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    /* Day Mode Track: 14 Hourly Columns */
+
                                                     <div className="flex-1 flex relative">
                                                         {[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((hour) => (
                                                             <div
@@ -1226,7 +1226,7 @@ export default function UserRoomBookings({
                                                             </div>
                                                         ))}
 
-                                                        {/* Booking Bars in Day Mode */}
+
                                                         {dayLanesList.map((b) => {
                                                             const clampedStart = Math.max(7, Math.min(21, b.startDec));
                                                             const clampedEnd = Math.max(clampedStart + 0.5, Math.min(21, b.endDec));
@@ -1253,7 +1253,7 @@ export default function UserRoomBookings({
                                                                         isApproved
                                                                             ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-700/15'
                                                                             : isInUse
-                                                                            ? 'bg-blue-600 border-blue-500 text-white ring-2 ring-blue-300 shadow-blue-700/15 animate-pulse'
+                                                                            ? 'bg-blue-600 border-blue-500 text-white ring-2 ring-blue-300 shadow-blue-700/15'
                                                                             : isPending
                                                                             ? 'bg-amber-500 border-amber-400 text-white shadow-amber-700/15'
                                                                             : 'bg-slate-700 border-slate-600 text-white'
@@ -1284,7 +1284,7 @@ export default function UserRoomBookings({
                                                                             {b.start_time} - {b.end_time}
                                                                         </span>
                                                                         {isInUse && (
-                                                                            <span className="text-[9px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded uppercase tracking-wider animate-bounce">
+                                                                            <span className="text-[9px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded uppercase tracking-wider">
                                                                                 LIVE
                                                                             </span>
                                                                         )}
@@ -1299,9 +1299,9 @@ export default function UserRoomBookings({
                                     })}
                                 </div>
 
-                                {/* Bottom Row of Left Column: + Ajukan Peminjaman Ruangan */}
+
                                 <div className="flex border-t border-slate-200 bg-slate-50/70">
-                                    {/* Left Cell: + Ajukan Peminjaman Ruangan */}
+
                                     <div className="w-64 min-w-[256px] shrink-0 border-r border-slate-200 bg-slate-50/70 sticky left-0 z-20 px-4 py-2.5">
                                         <button
                                             type="button"
@@ -1316,7 +1316,7 @@ export default function UserRoomBookings({
                                         </button>
                                     </div>
 
-                                    {/* Empty track extension below */}
+
                                     <div className="flex-1 flex bg-slate-50/40 min-h-[38px]">
                                         {zoomMode === 'month' ? (
                                             monthDays.map((day) => (
@@ -1341,7 +1341,7 @@ export default function UserRoomBookings({
                         </div>
                     </div>
 
-                    {/* Bottom Status Legend & Helpful Tips */}
+
                     <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
                         <div className="flex flex-wrap items-center gap-2.5">
                             <span className="text-slate-400 font-semibold mr-1">Keterangan:</span>
@@ -1350,7 +1350,7 @@ export default function UserRoomBookings({
                                 Disetujui
                             </span>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 font-bold border border-blue-200">
-                                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                                <span className="w-2 h-2 rounded-full bg-blue-600" />
                                 Sedang Digunakan (LIVE)
                             </span>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold border border-amber-200">
@@ -1371,7 +1371,7 @@ export default function UserRoomBookings({
                 </div>
             )}
 
-            {/* TAB 3: RIWAYAT BOOKING SAYA */}
+
             {activeTab === 'my_bookings' && (
                 <div className="space-y-4">
                     {my_bookings.length === 0 ? (
@@ -1443,7 +1443,7 @@ export default function UserRoomBookings({
                                                 </span>
                                             </div>
 
-                                            {/* Alasan Penolakan jika ditolak */}
+
                                             {booking.status === 'rejected' && booking.rejection_reason && (
                                                 <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-900">
                                                     <strong className="block text-[11px] font-bold text-red-700">Alasan Penolakan Admin:</strong>
@@ -1486,7 +1486,7 @@ export default function UserRoomBookings({
                 </div>
             )}
 
-            {/* MODAL FORM PENGAJUAN BOOKING RUANGAN */}
+
             <Modal show={isBookingModalOpen} onClose={() => setIsBookingModalOpen(false)} maxWidth="2xl">
                 <form onSubmit={handleBookingSubmit} className="p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -1505,7 +1505,7 @@ export default function UserRoomBookings({
                     </div>
 
                     <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-                        {/* Pilihan Ruangan */}
+
                         <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Ruangan Pertemuan *</label>
                             <select
@@ -1524,7 +1524,7 @@ export default function UserRoomBookings({
                             {bookingErrors.room_id && <p className="text-[11px] text-red-600 mt-1">{bookingErrors.room_id}</p>}
                         </div>
 
-                        {/* Waktu & Tanggal */}
+
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Pemakaian *</label>
@@ -1559,7 +1559,7 @@ export default function UserRoomBookings({
                             </div>
                         </div>
 
-                        {/* Alert Deteksi Bentrok Instan */}
+
                         {conflictDetected && (
                             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-950 flex items-start gap-2.5">
                                 <Icon icon="ph:warning-octagon-fill" className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -1572,7 +1572,7 @@ export default function UserRoomBookings({
                             </div>
                         )}
 
-                        {/* Judul Acara / Keperluan */}
+
                         <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1">Nama Acara / Agenda Kegiatan *</label>
                             <input
@@ -1586,7 +1586,7 @@ export default function UserRoomBookings({
                             {bookingErrors.title && <p className="text-[11px] text-red-600 mt-1">{bookingErrors.title}</p>}
                         </div>
 
-                        {/* Pemohon, Unit, Kontak, Peserta */}
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Nama Penanggung Jawab *</label>
@@ -1639,14 +1639,14 @@ export default function UserRoomBookings({
                             </div>
                         </div>
 
-                        {/* Fasilitas Tambahan Checkboxes */}
+
                         <div>
                             <div className="flex items-center justify-between mb-1.5 relative">
                                 <label className="block text-xs font-bold text-slate-700">
                                     Fasilitas Tambahan
                                 </label>
                                 <div className="flex items-center gap-1.5">
-                                    {/* Tombol + Langsung */}
+
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -1661,7 +1661,7 @@ export default function UserRoomBookings({
                                         <span className="hidden sm:inline text-[11px]">Tambah</span>
                                     </button>
 
-                                    {/* Tombol Titik 3 di Pojok Kanan Atas Container */}
+
                                     <div className="relative">
                                         <button
                                             type="button"
@@ -1711,7 +1711,7 @@ export default function UserRoomBookings({
                                 </div>
                             </div>
 
-                            {/* Form Input Tambah Fasilitas Baru */}
+
                             {isAddingFacility && (
                                 <div className="mb-2.5 p-2 bg-teal-50/70 border border-teal-200 rounded-xl flex items-center gap-2 animate-in fade-in duration-150">
                                     <input
@@ -1751,7 +1751,7 @@ export default function UserRoomBookings({
                                 </div>
                             )}
 
-                            {/* Toolbar Mode Hapus */}
+
                             {isDeleteMode && (
                                 <div className="mb-2.5 p-2 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs animate-in fade-in duration-150">
                                     <div className="flex items-center gap-1.5 text-rose-800 font-semibold">
@@ -1781,7 +1781,7 @@ export default function UserRoomBookings({
                                 </div>
                             )}
 
-                            {/* Grid Container Fasilitas */}
+
                             <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border transition ${
                                 isDeleteMode ? 'border-rose-300 ring-2 ring-rose-100 bg-rose-50/20' : 'border-slate-200/70'
                             }`}>
@@ -1837,7 +1837,7 @@ export default function UserRoomBookings({
                             </div>
                         </div>
 
-                        {/* Deskripsi Tambahan */}
+
                         <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan / Agenda Rinci</label>
                             <textarea
@@ -1870,7 +1870,7 @@ export default function UserRoomBookings({
                 </form>
             </Modal>
 
-            {/* MODAL DETAIL BOOKING */}
+
             {selectedBookingDetail && (
                 <Modal show={Boolean(selectedBookingDetail)} onClose={() => setSelectedBookingDetail(null)} maxWidth="lg">
                     <div className="p-6">
@@ -1955,7 +1955,7 @@ export default function UserRoomBookings({
                 </Modal>
             )}
 
-            {/* MODAL BATALKAN BOOKING */}
+
             {cancellingBooking && (
                 <Modal show={Boolean(cancellingBooking)} onClose={() => setCancellingBooking(null)} maxWidth="sm">
                     <div className="p-6">

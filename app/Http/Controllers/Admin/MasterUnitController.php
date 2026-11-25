@@ -13,9 +13,7 @@ use Inertia\Response;
 
 class MasterUnitController extends Controller
 {
-    /**
-     * Tampilkan daftar master Unit & Sub Unit
-     */
+
     public function index(Request $request): Response
     {
         $query = Unit::with(['subUnits' => function ($q) {
@@ -45,9 +43,6 @@ class MasterUnitController extends Controller
         ]);
     }
 
-    /**
-     * Tambah Unit baru (Lokal)
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
@@ -81,9 +76,6 @@ class MasterUnitController extends Controller
         return redirect()->back()->with('success', "Unit '{$unit->name}' berhasil ditambahkan ke database.");
     }
 
-    /**
-     * Update Unit
-     */
     public function update(Request $request, Unit $unit): RedirectResponse
     {
         $request->validate([
@@ -101,9 +93,6 @@ class MasterUnitController extends Controller
         return redirect()->back()->with('success', "Unit '{$unit->name}' berhasil diperbarui.");
     }
 
-    /**
-     * Hapus Unit
-     */
     public function destroy(Unit $unit): RedirectResponse
     {
         $name = $unit->name;
@@ -111,9 +100,6 @@ class MasterUnitController extends Controller
         return redirect()->back()->with('success', "Unit '{$name}' dan sub-unit terkait berhasil dihapus.");
     }
 
-    /**
-     * Tambah Sub Unit baru ke dalam Unit
-     */
     public function storeSubUnit(Request $request, Unit $unit): RedirectResponse
     {
         $request->validate([
@@ -132,9 +118,6 @@ class MasterUnitController extends Controller
         return redirect()->back()->with('success', "Sub Unit baru berhasil ditambahkan pada {$unit->name}.");
     }
 
-    /**
-     * Update Sub Unit
-     */
     public function updateSubUnit(Request $request, SubUnit $subUnit): RedirectResponse
     {
         $request->validate([
@@ -152,9 +135,6 @@ class MasterUnitController extends Controller
         return redirect()->back()->with('success', "Sub Unit '{$subUnit->name}' berhasil diperbarui.");
     }
 
-    /**
-     * Hapus Sub Unit
-     */
     public function destroySubUnit(SubUnit $subUnit): RedirectResponse
     {
         $name = $subUnit->name;
@@ -162,9 +142,6 @@ class MasterUnitController extends Controller
         return redirect()->back()->with('success', "Sub Unit '{$name}' berhasil dihapus.");
     }
 
-    /**
-     * Sinkronkan Unit & Sub Unit dari Helpdesk RSAM API
-     */
     public function syncFromRsam(): RedirectResponse
     {
         $res = RsamApiService::syncRemoteUnits();

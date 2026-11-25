@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
@@ -12,6 +12,28 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isMasterDropdownOpen, setIsMasterDropdownOpen] = useState(false);
     const [isMobileMasterOpen, setIsMobileMasterOpen] = useState(true);
+
+    // ref buat nutup dropdown otomatis pas klik di luar area
+    const masterDropdownRef = useRef(null);
+    const slaDropdownRef = useRef(null);
+    const profileMenuRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (masterDropdownRef.current && !masterDropdownRef.current.contains(event.target)) {
+                setIsMasterDropdownOpen(false);
+            }
+            if (slaDropdownRef.current && !slaDropdownRef.current.contains(event.target)) {
+                setIsSlaDropdownOpen(false);
+            }
+            if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+                setIsProfileMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : (url || '');
     const isDashboardActive = isAdmin ? currentPath === '/admin/dashboard' : currentPath === '/dashboard';
@@ -28,7 +50,6 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
         }
     }, [flash]);
 
-    // SLA Desktop & Toast Notification
     useEffect(() => {
         if (isAdmin && (slaAlerts?.urgent_count || 0) > 0) {
             const firstUrgent = slaAlerts.tickets?.[0];
@@ -37,7 +58,7 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                 if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(alertKey)) {
                     sessionStorage.setItem(alertKey, '1');
                     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                        new Notification('⚠️ Peringatan SLA Helpdesk', {
+                        new Notification('Pengingat Batas Waktu Tiket', {
                             body: `Tiket ${firstUrgent.ticket_number}: ${firstUrgent.subject} (${firstUrgent.sla?.status_label})`,
                             icon: '/logo.png',
                         });
@@ -51,7 +72,7 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
         if (typeof window !== 'undefined' && 'Notification' in window) {
             const perm = await Notification.requestPermission();
             if (perm === 'granted') {
-                toast.success('Izin notifikasi desktop aktif untuk batas waktu SLA.');
+                toast.success('Notifikasi batas waktu tiket diaktifkan.');
             } else {
                 toast.error('Izin notifikasi desktop ditolak oleh browser.');
             }
@@ -67,11 +88,10 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
             <Head title={title} />
 
-            {/* Top Navigation */}
             <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
                 <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 xl:px-16">
                     <div className="relative flex items-center justify-between h-16">
-                        {/* Left: Logo (Using official logo.png) */}
+
                         <div className="flex items-center shrink-0">
                             <Link href={isAdmin ? '/admin/dashboard' : '/dashboard'} className="flex items-center gap-3.5 group">
                                 <img
@@ -90,11 +110,10 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                             </Link>
                         </div>
 
-                        {/* Center: Desktop Nav Items (Centered, Tanpa Icon, Tanpa Background Hover) */}
                         <nav className="hidden md:flex items-center justify-center gap-8 lg:gap-10 absolute left-1/2 -translate-x-1/2">
                             {isAdmin ? (
                                 <>
-                                    {/* 1. Dashboard */}
+
                                     <Link
                                         href="/admin/dashboard"
                                         className={`text-sm font-semibold transition-colors py-1 ${
@@ -106,7 +125,6 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                         Dashboard
                                     </Link>
 
-                                    {/* 2. Peminjaman Ruangan */}
                                     <Link
                                         href="/admin/room-bookings"
                                         className={`text-sm font-semibold transition-colors py-1 ${
@@ -118,7 +136,6 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                         Peminjaman Ruangan
                                     </Link>
 
-                                    {/* 3. Log */}
                                     <Link
                                         href="/admin/logs"
                                         className={`text-sm font-semibold transition-colors py-1 ${
@@ -130,8 +147,7 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                         Log
                                     </Link>
 
-                                    {/* 3. Master Data Dropdown */}
-                                    <div className="relative">
+                                    <div className="relative" ref={masterDropdownRef}>
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -153,7 +169,6 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                             />
                                         </button>
 
-                                        {/* Dropdown Menu Box */}
                                         {isMasterDropdownOpen && (
                                             <>
                                                 <div
@@ -217,7 +232,7 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                                             </div>
                                                             <div className="truncate">
                                                                 <p className="leading-tight truncate">Master Urgensi</p>
-                                                                <p className="text-[10px] text-slate-400 font-normal truncate">Prioritas & SLA jam</p>
+                                                                <p className="text-[10px] text-slate-400 font-normal truncate">Prioritas & batas waktu</p>
                                                             </div>
                                                         </Link>
 
@@ -253,7 +268,7 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                                             </div>
                                                             <div className="truncate">
                                                                 <p className="leading-tight truncate">Master Pengguna</p>
-                                                                <p className="text-[10px] text-slate-400 font-normal truncate">Admin & sinkronisasi</p>
+                                                                <p className="text-[10px] text-slate-400 font-normal truncate">Admin & daftar pegawai</p>
                                                             </div>
                                                         </Link>
                                                     </div>
@@ -284,15 +299,11 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                         }`}
                                     >
                                         <span>Peminjaman Ruangan</span>
-                                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-teal-50 text-teal-700 border border-teal-200">
-                                            Booking
-                                        </span>
                                     </Link>
                                 </>
                             )}
                         </nav>
 
-                        {/* Right Section */}
                         <div className="flex items-center gap-2.5 shrink-0">
                             {!isAdmin && onOpenCreateTicket && (
                                 <button
@@ -305,9 +316,8 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                 </button>
                             )}
 
-                            {/* SLA Alert Notification Bell for Admin */}
                             {isAdmin && (
-                                <div className="relative">
+                                <div className="relative" ref={slaDropdownRef}>
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -320,26 +330,25 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                                 ? (slaAlerts?.overdue_count > 0 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-amber-50 border-amber-200 text-amber-700')
                                                 : 'border-slate-200/80 hover:bg-slate-50 text-slate-600'
                                         }`}
-                                        title="Peringatan Tenggat Waktu SLA"
+                                        title="Pengingat Batas Waktu"
                                     >
                                         <Icon
                                             icon="ph:bell-ringing-bold"
                                             className={`w-5 h-5 ${
                                                 (slaAlerts?.urgent_count || 0) > 0
-                                                    ? (slaAlerts?.overdue_count > 0 ? 'text-rose-600 animate-wiggle' : 'text-amber-600')
+                                                    ? (slaAlerts?.overdue_count > 0 ? 'text-rose-600' : 'text-amber-600')
                                                     : 'text-slate-500'
                                             }`}
                                         />
                                         {(slaAlerts?.urgent_count || 0) > 0 && (
                                             <span className={`absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full text-white font-extrabold text-[10px] flex items-center justify-center ring-2 ring-white ${
-                                                slaAlerts?.overdue_count > 0 ? 'bg-rose-600 animate-pulse' : 'bg-amber-500'
+                                                slaAlerts?.overdue_count > 0 ? 'bg-rose-600' : 'bg-amber-500'
                                             }`}>
                                                 {slaAlerts.urgent_count}
                                             </span>
                                         )}
                                     </button>
 
-                                    {/* SLA Dropdown Panel */}
                                     {isSlaDropdownOpen && (
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setIsSlaDropdownOpen(false)} />
@@ -362,7 +371,6 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                                     )}
                                                 </div>
 
-                                                {/* List of urgent tickets */}
                                                 <div className="max-h-72 overflow-y-auto space-y-1.5">
                                                     {(slaAlerts?.tickets || []).length === 0 ? (
                                                         <div className="py-5 px-3 text-center text-xs text-slate-500">
@@ -426,8 +434,7 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                 </div>
                             )}
 
-                            {/* User Profile Pill */}
-                            <div className="relative">
+                            <div className="relative" ref={profileMenuRef}>
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -452,20 +459,14 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                     <Icon icon="ph:caret-down-bold" className="w-3.5 h-3.5 text-slate-400" />
                                 </button>
 
-                                {/* Dropdown Menu */}
                                 {isProfileMenuOpen && (
-                                    <>
-                                        <div
-                                            className="fixed inset-0 z-10"
-                                            onClick={() => setIsProfileMenuOpen(false)}
-                                        />
-                                        <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl border border-slate-100 z-20 animate-in fade-in zoom-in-95 duration-100">
+                                    <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl border border-slate-100 z-20 animate-in fade-in zoom-in-95 duration-100">
                                             <div className="px-3 py-2 border-b border-slate-100 mb-1">
                                                 <p className="text-xs font-bold text-slate-900 truncate">{user?.name}</p>
                                                 <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
-                                                <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-slate-100 text-slate-700">
+                                                <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-slate-100 text-slate-700">
                                                     <span className={`w-1.5 h-1.5 rounded-full ${isAdmin ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
-                                                    Role: {isAdmin ? 'Admin' : 'User'}
+                                                    {isAdmin ? 'Administrator' : 'Pengguna'}
                                                 </div>
                                             </div>
 
@@ -482,14 +483,12 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                                 className="w-full mt-1 flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 rounded-xl hover:bg-rose-50 transition text-left"
                                             >
                                                 <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
-                                                <span>Keluar (Logout)</span>
+                                                <span>Keluar</span>
                                             </button>
                                         </div>
-                                    </>
                                 )}
                             </div>
 
-                            {/* Mobile Menu Toggle */}
                             <button
                                 type="button"
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -501,7 +500,6 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                     </div>
                 </div>
 
-                {/* Mobile Drawer */}
                 {isMobileMenuOpen && (
                     <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-2 pb-4 space-y-1">
                         {isAdmin ? (
@@ -534,7 +532,6 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                     Log
                                 </Link>
 
-                                {/* Mobile Master Data Accordion */}
                                 <div className="pt-1">
                                     <button
                                         type="button"
@@ -660,7 +657,6 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                             </button>
                         )}
 
-                        {/* Mobile Logout Option */}
                         <div className="pt-2 mt-2 border-t border-slate-100">
                             <div className="px-3 py-1 mb-1">
                                 <p className="text-xs font-bold text-slate-800">{user?.name}</p>
@@ -679,14 +675,12 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                 )}
             </header>
 
-            {/* Main Content */}
             <main className="flex-1 max-w-7xl w-full mx-auto px-6 sm:px-10 lg:px-12 xl:px-16 py-6 sm:py-8">
                 {children}
             </main>
 
-            {/* Footer */}
             <footer className="border-t border-slate-200/80 bg-white py-4 px-6 sm:px-10 lg:px-12 xl:px-16 text-center text-xs text-slate-400">
-                <p>Helpdesk Lite &copy; 2026. Terhubung secara terpusat dengan Helpdesk RSAM API.</p>
+                <p>Helpdesk Lite &copy; 2026.</p>
             </footer>
         </div>
     );

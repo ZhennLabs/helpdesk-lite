@@ -64,9 +64,6 @@ class Ticket extends Model
         return $this->hasMany(TicketMessage::class, 'ticket_id')->orderBy('created_at', 'asc');
     }
 
-    /**
-     * Generate unique ticket number TCK-YYYYMM-XXX
-     */
     public static function generateTicketNumber(): string
     {
         $prefix = 'TCK-' . date('Ym') . '-';
@@ -82,9 +79,6 @@ class Ticket extends Model
         return $prefix . str_pad($seq + 1, 3, '0', STR_PAD_LEFT);
     }
 
-    /**
-     * Hitung kalkulasi waktu & status SLA tiket secara dinamis
-     */
     public function getSlaInfo(): array
     {
         $slaHours = (int) ($this->urgency?->sla_hours ?: 24);
@@ -95,7 +89,7 @@ class Ticket extends Model
         $isActive = in_array($this->status, ['open', 'in_progress']);
 
         if (!$isActive) {
-            // Tiket sudah selesai (resolved / closed)
+
             $completedAt = $this->resolved_at ?: $this->closed_at ?: $this->updated_at ?: $now;
             $isMet = $completedAt <= $deadline;
             $diffMinutes = abs($completedAt->diffInMinutes($deadline));
@@ -115,11 +109,9 @@ class Ticket extends Model
             ];
         }
 
-        // Tiket masih aktif (open atau in_progress)
         $diffMinutes = (int) $now->diffInMinutes($deadline, false);
         $isOverdue = $diffMinutes < 0;
 
-        // Mendekati batas waktu jika sisa waktu <= 25% dari total jam SLA atau <= 120 menit
         $thresholdMinutes = min(180, max(30, (int) ($slaHours * 60 * 0.25)));
         $isNearDeadline = !$isOverdue && ($diffMinutes <= $thresholdMinutes);
 

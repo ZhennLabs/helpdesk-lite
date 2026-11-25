@@ -6,14 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Room;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class MasterRoomController extends Controller
 {
-    /**
-     * Tampilan daftar master ruangan
-     */
+
     public function index(): Response
     {
         $rooms = Room::withCount([
@@ -45,9 +44,6 @@ class MasterRoomController extends Controller
         ]);
     }
 
-    /**
-     * Simpan ruangan baru
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
@@ -57,7 +53,8 @@ class MasterRoomController extends Controller
             'location' => 'required|string|max:150',
             'facilities' => 'nullable|array',
             'description' => 'nullable|string|max:1000',
-            'image_url' => 'nullable|url|max:500',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
+            'image_url' => ['nullable', 'string', 'max:500', 'regex:/^(https?:\/\/|\/storage\/)/i'],
             'color' => 'nullable|string|max:20',
             'is_active' => 'boolean',
         ]);
@@ -65,6 +62,12 @@ class MasterRoomController extends Controller
         $facilities = $request->facilities ?: [];
         if (is_string($facilities)) {
             $facilities = array_filter(array_map('trim', explode(',', $facilities)));
+        }
+
+        $imageUrl = $request->image_url ?: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80';
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('rooms', 'public');
+            $imageUrl = '/storage/' . $path;
         }
 
         Room::create([
@@ -74,7 +77,7 @@ class MasterRoomController extends Controller
             'location' => $request->location,
             'facilities' => $facilities,
             'description' => $request->description,
-            'image_url' => $request->image_url ?: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80',
+            'image_url' => $imageUrl,
             'color' => $request->color ?: '#0D9488',
             'is_active' => $request->boolean('is_active', true),
         ]);
@@ -82,9 +85,6 @@ class MasterRoomController extends Controller
         return back()->with('success', "Ruangan '{$request->name}' berhasil ditambahkan ke master data.");
     }
 
-    /**
-     * Perbarui data ruangan
-     */
     public function update(Request $request, Room $room): RedirectResponse
     {
         $request->validate([
@@ -94,7 +94,8 @@ class MasterRoomController extends Controller
             'location' => 'required|string|max:150',
             'facilities' => 'nullable|array',
             'description' => 'nullable|string|max:1000',
-            'image_url' => 'nullable|url|max:500',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:5120',
+            'image_url' => ['nullable', 'string', 'max:500', 'regex:/^(https?:\/\/|\/storage\/)/i'],
             'color' => 'nullable|string|max:20',
             'is_active' => 'boolean',
         ]);
@@ -104,6 +105,15 @@ class MasterRoomController extends Controller
             $facilities = array_filter(array_map('trim', explode(',', $facilities)));
         }
 
+        $imageUrl = $request->image_url ?: $room->image_url;
+        if ($request->hasFile('image')) {
+            if ($room->image_url && str_starts_with($room->image_url, '/storage/rooms/')) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $room->image_url));
+            }
+            $path = $request->file('image')->store('rooms', 'public');
+            $imageUrl = '/storage/' . $path;
+        }
+
         $room->update([
             'name' => $request->name,
             'code' => $request->code ?: $room->code,
@@ -111,7 +121,7 @@ class MasterRoomController extends Controller
             'location' => $request->location,
             'facilities' => $facilities,
             'description' => $request->description,
-            'image_url' => $request->image_url ?: $room->image_url,
+            'image_url' => $imageUrl,
             'color' => $request->color ?: $room->color,
             'is_active' => $request->boolean('is_active', true),
         ]);
@@ -119,9 +129,6 @@ class MasterRoomController extends Controller
         return back()->with('success', "Data ruangan '{$room->name}' berhasil diperbarui.");
     }
 
-    /**
-     * Hapus ruangan
-     */
     public function destroy(Room $room): RedirectResponse
     {
         $hasActiveBookings = $room->bookings()

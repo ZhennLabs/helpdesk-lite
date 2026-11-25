@@ -3,6 +3,7 @@ import { Head, useForm, usePage, router, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import DataTable from '@/Components/DataTable';
+import Tooltip from '@/Components/Tooltip';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 
@@ -40,14 +41,14 @@ export default function AdminRoomBookings({
             if (p.get('view') === 'timeline') return 'timeline';
         }
         return 'table';
-    }); // 'table' | 'timeline'
-    const [zoomMode, setZoomMode] = useState('month'); // 'month' | 'day'
+    });
+    const [zoomMode, setZoomMode] = useState('month');
     const timelineScrollRef = useRef(null);
     const [filterDate, setFilterDate] = useState(selected_date || new Date().toISOString().split('T')[0]);
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [roomFilter, setRoomFilter] = useState(filters.room_id || '');
 
-    // Modals
+
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [availableFacilities, setAvailableFacilities] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -73,7 +74,7 @@ export default function AdminRoomBookings({
     const [rejectionReason, setRejectionReason] = useState('');
     const [deletingBooking, setDeletingBooking] = useState(null);
 
-    // Form Tambah Booking oleh Admin
+
     const {
         data: adminBookingData,
         setData: setAdminBookingData,
@@ -93,10 +94,10 @@ export default function AdminRoomBookings({
         participants_count: 20,
         description: '',
         extra_facilities: [],
-        status: 'approved', // Admin default to approved
+        status: 'approved',
     });
 
-    // Realtime Reverb
+
     useEffect(() => {
         if (typeof window === 'undefined' || !window.Echo) return;
 
@@ -137,7 +138,7 @@ export default function AdminRoomBookings({
         handleFilterChange('date', newDate);
     };
 
-    // Gantt Chart State & Helpers
+
     const todayDateStr = useMemo(() => {
         const d = new Date();
         const y = d.getFullYear();
@@ -189,7 +190,7 @@ export default function AdminRoomBookings({
             const day = String(d.getDate()).padStart(2, '0');
             handleDateJump(`${y}-${m}-${day}`);
         } catch {
-            // fallback
+
         }
     };
 
@@ -261,7 +262,7 @@ export default function AdminRoomBookings({
             const day = String(d.getDate()).padStart(2, '0');
             handleDateJump(`${y}-${m}-${day}`);
         } catch {
-            // fallback
+
         }
     };
 
@@ -350,7 +351,7 @@ export default function AdminRoomBookings({
     useEffect(() => {
         if (viewMode !== 'timeline') return;
 
-        // Multi-tick scroll to ensure it directly jumps to today
+
         scrollToToday(false);
 
         const rAF = requestAnimationFrame(() => {
@@ -460,7 +461,7 @@ export default function AdminRoomBookings({
             case 'in_use':
                 return {
                     bar: 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 border-blue-300 shadow-blue-900/20 text-white ring-2 ring-blue-400/60',
-                    badgeBg: 'bg-blue-950/40 text-cyan-200 border border-cyan-400/40 animate-pulse',
+                    badgeBg: 'bg-blue-950/40 text-cyan-200 border border-cyan-400/40',
                     label: 'LIVE',
                     icon: 'ph:broadcast-bold',
                 };
@@ -495,7 +496,7 @@ export default function AdminRoomBookings({
         }
     };
 
-    // Update Status Action
+
     const updateBookingStatus = (bookingId, status, extraData = {}) => {
         router.post(`/admin/room-bookings/${bookingId}/status`, {
             status,
@@ -596,7 +597,7 @@ export default function AdminRoomBookings({
             case 'approved':
                 return { label: 'Disetujui', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' };
             case 'in_use':
-                return { label: 'Sedang Berlangsung', bg: 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse', dot: 'bg-blue-500' };
+                return { label: 'Sedang Berlangsung', bg: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' };
             case 'completed':
                 return { label: 'Selesai', bg: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-400' };
             case 'rejected':
@@ -604,21 +605,22 @@ export default function AdminRoomBookings({
             case 'cancelled':
                 return { label: 'Dibatalkan', bg: 'bg-slate-100 text-slate-500 border-slate-200', dot: 'bg-slate-400' };
             default:
-                return { label: 'Menunggu Approval', bg: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' };
+                return { label: 'Menunggu', bg: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' };
         }
     };
 
     const columns = [
         {
             key: 'booking_number',
-            label: 'No. Booking & Status',
+            label: 'No. Booking',
+            align: 'center',
             sortable: true,
             render: (b) => {
                 const statusObj = getStatusBadge(b.status);
                 return (
-                    <div>
+                    <div className="flex flex-col items-center whitespace-nowrap">
                         <div className="font-mono text-xs font-extrabold text-teal-800">{b.booking_number}</div>
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold border mt-1 ${statusObj.bg}`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border mt-1 ${statusObj.bg}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${statusObj.dot}`} />
                             {statusObj.label}
                         </span>
@@ -628,68 +630,72 @@ export default function AdminRoomBookings({
         },
         {
             key: 'room.name',
-            label: 'Ruangan & Kapasitas',
+            label: 'Ruangan',
             sortable: true,
             render: (b) => (
-                <div>
+                <div className="max-w-[170px]">
                     <div className="flex items-center gap-1.5">
                         <span
                             className="w-2.5 h-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: b.room?.color || '#0D9488' }}
                         />
-                        <span className="font-bold text-slate-900 text-xs">{b.room?.name || '-'}</span>
+                        <span className="font-bold text-slate-900 text-xs truncate">{b.room?.name || '-'}</span>
                     </div>
-                    <span className="text-[11px] text-slate-400 pl-4">
-                        {b.room?.location} • Kapasitas: {b.room?.capacity} Org
+                    <span className="text-[11px] text-slate-400 pl-4 block truncate">
+                        {b.room?.location}
                     </span>
                 </div>
             ),
         },
         {
             key: 'schedule',
-            label: 'Jadwal Pemakaian',
+            label: 'Jadwal',
+            align: 'center',
             sortable: true,
             sortValue: (b) => `${b.booking_date} ${b.start_time}`,
             render: (b) => (
-                <div>
+                <div className="whitespace-nowrap">
                     <div className="font-bold text-slate-900 text-xs">{b.booking_date_formatted}</div>
                     <div className="font-mono text-[11px] font-semibold text-teal-700">
-                        {b.start_time} - {b.end_time} WIB
+                        {b.start_time} - {b.end_time}
                     </div>
                 </div>
             ),
         },
         {
             key: 'title',
-            label: 'Agenda / Kegiatan & Unit',
+            label: 'Agenda & Unit',
             sortable: true,
             render: (b) => (
-                <div className="max-w-xs">
+                <div className="max-w-[200px]">
                     <div className="font-bold text-slate-900 text-xs truncate" title={b.title}>
                         {b.title}
                     </div>
-                    <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                        <Icon icon="ph:buildings-bold" className="w-3 h-3 text-slate-400" />
-                        <span>{b.booker_unit}</span>
+                    <div className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
+                        <Icon icon="ph:buildings-bold" className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{b.booker_unit}</span>
+                        {b.participants_count ? (
+                            <span className="text-slate-400 shrink-0">• {b.participants_count} Org</span>
+                        ) : null}
                     </div>
                 </div>
             ),
         },
         {
             key: 'booker_name',
-            label: 'Penanggung Jawab',
+            label: 'Pemohon',
             sortable: true,
             render: (b) => (
-                <div>
-                    <div className="font-bold text-slate-900 text-xs">{b.booker_name}</div>
+                <div className="max-w-[150px]">
+                    <div className="font-bold text-slate-900 text-xs truncate">{b.booker_name}</div>
                     {b.booker_phone && (
                         <a
                             href={`https://wa.me/${b.booker_phone.replace(/\D/g, '')}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-[11px] text-emerald-600 hover:underline flex items-center gap-1 font-semibold"
+                            className="text-[11px] text-emerald-600 hover:underline flex items-center gap-1 font-semibold whitespace-nowrap"
                         >
-                            <Icon icon="ph:whatsapp-logo-bold" className="w-3 h-3 text-emerald-600" />
+                            <Icon icon="ph:whatsapp-logo-bold" className="w-3 h-3 text-emerald-600 shrink-0" />
                             <span>{b.booker_phone}</span>
                         </a>
                     )}
@@ -697,93 +703,81 @@ export default function AdminRoomBookings({
             ),
         },
         {
-            key: 'participants_count',
-            label: 'Peserta',
-            align: 'center',
-            sortable: true,
-            render: (b) => (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
-                    <Icon icon="ph:users-bold" className="w-3 h-3 text-slate-500" />
-                    <span>{b.participants_count || '-'} Org</span>
-                </span>
-            ),
-        },
-        {
             key: 'actions',
-            label: 'Aksi & Tindakan',
+            label: 'Aksi',
             align: 'right',
             render: (b) => (
-                <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    {/* Tombol Setujui / Tolak jika status pending */}
+                <div className="flex items-center justify-center gap-1 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+
                     {b.status === 'pending' && (
                         <>
-                            <button
-                                type="button"
-                                onClick={() => updateBookingStatus(b.id, 'approved')}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition inline-flex items-center gap-1 shadow-2xs"
-                                title="Setujui Peminjaman"
-                            >
-                                <Icon icon="ph:check-bold" className="w-3.5 h-3.5" />
-                                <span>Setujui</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setRejectingBooking(b);
-                                    setRejectionReason('');
-                                }}
-                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-lg transition inline-flex items-center gap-1"
-                                title="Tolak Pengajuan"
-                            >
-                                <Icon icon="ph:x-bold" className="w-3.5 h-3.5" />
-                                <span>Tolak</span>
-                            </button>
+                            <Tooltip text="Setujui Peminjaman">
+                                <button
+                                    type="button"
+                                    onClick={() => updateBookingStatus(b.id, 'approved')}
+                                    className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-2xs"
+                                >
+                                    <Icon icon="ph:check-bold" className="w-4 h-4" />
+                                </button>
+                            </Tooltip>
+                            <Tooltip text="Tolak Pengajuan">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setRejectingBooking(b);
+                                        setRejectionReason('');
+                                    }}
+                                    className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg transition"
+                                >
+                                    <Icon icon="ph:x-bold" className="w-4 h-4" />
+                                </button>
+                            </Tooltip>
                         </>
                     )}
 
-                    {/* Tombol Mulai Pemakaian jika status approved */}
                     {b.status === 'approved' && (
-                        <button
-                            type="button"
-                            onClick={() => updateBookingStatus(b.id, 'in_use')}
-                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg transition inline-flex items-center gap-1"
-                            title="Tandai Ruangan Sedang Digunakan"
-                        >
-                            <Icon icon="ph:play-bold" className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Mulai Pakai</span>
-                        </button>
+                        <Tooltip text="Mulai Pakai">
+                            <button
+                                type="button"
+                                onClick={() => updateBookingStatus(b.id, 'in_use')}
+                                className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition"
+                            >
+                                <Icon icon="ph:play-bold" className="w-4 h-4 text-blue-600" />
+                            </button>
+                        </Tooltip>
                     )}
 
-                    {/* Tombol Selesai jika status in_use */}
                     {b.status === 'in_use' && (
-                        <button
-                            type="button"
-                            onClick={() => updateBookingStatus(b.id, 'completed')}
-                            className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg transition inline-flex items-center gap-1 shadow-2xs"
-                            title="Tandai Pemakaian Selesai"
-                        >
-                            <Icon icon="ph:check-circle-bold" className="w-3.5 h-3.5" />
-                            <span>Selesaikan</span>
-                        </button>
+                        <Tooltip text="Selesaikan">
+                            <button
+                                type="button"
+                                onClick={() => updateBookingStatus(b.id, 'completed')}
+                                className="p-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition shadow-2xs"
+                            >
+                                <Icon icon="ph:check-circle-bold" className="w-4 h-4" />
+                            </button>
+                        </Tooltip>
                     )}
 
-                    <button
-                        type="button"
-                        onClick={() => setSelectedBooking(b)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
-                        title="Detail Booking"
-                    >
-                        <Icon icon="ph:eye-bold" className="w-4 h-4" />
-                    </button>
+                    <Tooltip text="Detail Booking">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedBooking(b)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+                        >
+                            <Icon icon="ph:eye-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
 
-                    <button
-                        type="button"
-                        onClick={() => setDeletingBooking(b)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
-                        title="Hapus Data"
-                    >
-                        <Icon icon="ph:trash-bold" className="w-4 h-4" />
-                    </button>
+                    <Tooltip text="Hapus Data">
+                        <button
+                            type="button"
+                            onClick={() => setDeletingBooking(b)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+                        >
+                            <Icon icon="ph:trash-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
                 </div>
             ),
         },
@@ -791,12 +785,12 @@ export default function AdminRoomBookings({
 
     return (
         <AppLayout title="Kelola Peminjaman Ruangan - Admin Workspace">
-            {/* Header Hero */}
+
             <div
                 style={{ background: 'linear-gradient(135deg, #176B54 0%, #1B775E 50%, #125844 100%)' }}
                 className="relative overflow-hidden rounded-3xl text-white p-6 sm:p-8 lg:p-10 mb-6 shadow-sm border border-emerald-900/20"
             >
-                {/* Subtle pattern background */}
+
                 <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px]" />
                 <div className="absolute -right-12 -bottom-12 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -838,7 +832,7 @@ export default function AdminRoomBookings({
                 </div>
             </div>
 
-            {/* 4 Kartu KPI Metrik */}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
                     <div>
@@ -856,7 +850,7 @@ export default function AdminRoomBookings({
                         <p className="text-2xl font-extrabold text-amber-600 mt-0.5">{stats.pending}</p>
                     </div>
                     <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${
-                        stats.pending > 0 ? 'bg-amber-100 text-amber-700 animate-bounce' : 'bg-amber-50 text-amber-600'
+                        stats.pending > 0 ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-600'
                     }`}>
                         <Icon icon="ph:clock-countdown-bold" className="w-5 h-5" />
                     </div>
@@ -883,7 +877,7 @@ export default function AdminRoomBookings({
                 </div>
             </div>
 
-            {/* Switcher Tampilan & Filter Bar */}
+
             <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-2xl w-full sm:w-auto">
                     <button
@@ -908,7 +902,7 @@ export default function AdminRoomBookings({
                     </button>
                 </div>
 
-                {/* Filter Tanggal Khusus Timeline */}
+
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400 font-medium">Lihat Tanggal:</span>
                     <input
@@ -920,7 +914,7 @@ export default function AdminRoomBookings({
                 </div>
             </div>
 
-            {/* TAB 1: TABEL DATA PENGELOLAAN BOOKING */}
+
             {viewMode === 'table' ? (
                 <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs">
                     <DataTable
@@ -968,7 +962,7 @@ export default function AdminRoomBookings({
                     />
                 </div>
             ) : (
-                /* TAB 2: WHITE MODERN GANTT CHART VIEW */
+
                 <div className="space-y-4">
                     <style>{`
                         .white-gantt-scroll::-webkit-scrollbar {
@@ -985,11 +979,11 @@ export default function AdminRoomBookings({
                         }
                     `}</style>
 
-                    {/* White Gantt Chart Card Container */}
+
                     <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm overflow-hidden text-slate-800">
-                        {/* Top Header Bar: » Oktober 2026 | [Kelola di Kalender] Bulan ⌄ < Hari ini > */}
+
                         <div className="bg-white border-b border-slate-200/90 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 select-none">
-                            {/* Left: » Bulan Tahun + Badge */}
+
                             <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2">
                                     <Icon icon="ph:caret-double-right-bold" className="w-4 h-4 text-teal-600 shrink-0" />
@@ -1003,7 +997,7 @@ export default function AdminRoomBookings({
                                 </span>
                             </div>
 
-                            {/* Right Controls: [Kelola di Kalender] | Bulan ⌄ | < Hari ini > */}
+
                             <div className="flex items-center gap-2 sm:gap-3">
                                 <button
                                     type="button"
@@ -1016,7 +1010,7 @@ export default function AdminRoomBookings({
                                     <span className="sm:hidden">Kalender</span>
                                 </button>
 
-                                {/* Dropdown Bulan / Hari */}
+
                                 <div className="relative">
                                     <select
                                         value={zoomMode}
@@ -1029,7 +1023,7 @@ export default function AdminRoomBookings({
                                     <Icon icon="ph:caret-down-bold" className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 </div>
 
-                                {/* Stepper < Hari ini > */}
+
                                 <div className="flex items-center gap-0.5 bg-slate-50 border border-slate-200/80 p-0.5 rounded-xl text-xs font-bold text-slate-700">
                                     <button
                                         type="button"
@@ -1063,21 +1057,21 @@ export default function AdminRoomBookings({
                             </div>
                         </div>
 
-                        {/* Timeline Canvas with Horizontal Scroll */}
+
                         <div
                             ref={timelineScrollRef}
                             className="overflow-x-auto white-gantt-scroll relative select-none"
                         >
                             <div className={zoomMode === 'month' ? 'min-w-[2488px]' : 'min-w-[1600px]'}>
-                                {/* Timeline Ruler Header */}
+
                                 <div className="flex border-b border-slate-200 bg-slate-50/90 backdrop-blur-xs h-11 sticky top-0 z-30">
-                                    {/* Left Sticky Header Cell */}
+
                                     <div className="w-64 min-w-[256px] shrink-0 border-r border-slate-200 bg-slate-50 sticky left-0 z-40 px-4 flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                         <span>RUANGAN</span>
                                         <span className="text-[10px] text-slate-500 font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-slate-200/80">{rooms.length} unit</span>
                                     </div>
 
-                                    {/* Ruler Time / Day Columns */}
+
                                     {zoomMode === 'month' ? (
                                         <div className="flex-1 flex relative">
                                             {monthDays.map((day) => {
@@ -1108,7 +1102,7 @@ export default function AdminRoomBookings({
                                                 );
                                             })}
 
-                                            {/* Today Coral/Red Vertical Marker Line */}
+
                                             {todayDayNumber !== null && (
                                                 <div
                                                     id="timeline-today-pin"
@@ -1118,7 +1112,7 @@ export default function AdminRoomBookings({
                                             )}
                                         </div>
                                     ) : (
-                                        /* Day Mode Ruler (14 Hours: 07:00 - 21:00) */
+
                                         <div className="flex-1 flex relative">
                                             {[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((hour) => (
                                                 <div
@@ -1129,7 +1123,7 @@ export default function AdminRoomBookings({
                                                 </div>
                                             ))}
 
-                                            {/* Today Realtime Marker Line */}
+
                                             {isToday && currentTime.decimal >= 7 && currentTime.decimal <= 21 && (
                                                 <div
                                                     id="timeline-today-pin"
@@ -1143,7 +1137,7 @@ export default function AdminRoomBookings({
                                     )}
                                 </div>
 
-                                {/* Body Rows per Ruangan */}
+
                                 <div className="divide-y divide-slate-100">
                                     {rooms.map((room) => {
                                         const roomMonthBookings = getRoomMonthBookings(room);
@@ -1162,7 +1156,7 @@ export default function AdminRoomBookings({
                                                 style={{ minHeight: `${rowHeightPx}px` }}
                                                 className="flex group/row hover:bg-slate-50/40 transition relative"
                                             >
-                                                {/* Left Sticky Room Info */}
+
                                                 <div className="w-64 min-w-[256px] shrink-0 border-r border-slate-200 bg-white sticky left-0 z-20 px-4 py-3 flex items-center justify-between gap-2 group-hover/row:bg-slate-50/90 transition select-none">
                                                     <div className="flex items-center gap-2.5 min-w-0">
                                                         <span
@@ -1201,9 +1195,9 @@ export default function AdminRoomBookings({
                                                     </div>
                                                 </div>
 
-                                                {/* Right Track Area */}
+
                                                 {zoomMode === 'month' ? (
-                                                    /* Month Mode Track: 31 Day Columns */
+
                                                     <div className="flex-1 flex relative">
                                                         {monthDays.map((day) => (
                                                             <div
@@ -1220,7 +1214,7 @@ export default function AdminRoomBookings({
                                                             </div>
                                                         ))}
 
-                                                        {/* Booking Cards in Month Mode */}
+
                                                         {monthLanesList.map((b) => {
                                                             const isApproved = b.status === 'approved';
                                                             const isInUse = b.status === 'in_use';
@@ -1243,7 +1237,7 @@ export default function AdminRoomBookings({
                                                                         isApproved
                                                                             ? 'bg-emerald-50 border-emerald-300 text-emerald-950 hover:bg-emerald-100'
                                                                             : isInUse
-                                                                            ? 'bg-blue-50 border-blue-400 text-blue-950 ring-2 ring-blue-400/60 animate-pulse'
+                                                                            ? 'bg-blue-50 border-blue-400 text-blue-950 ring-2 ring-blue-400/60'
                                                                             : isPending
                                                                             ? 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100'
                                                                             : 'bg-slate-100 border-slate-300 text-slate-800'
@@ -1279,7 +1273,7 @@ export default function AdminRoomBookings({
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    /* Day Mode Track: 14 Hourly Columns */
+
                                                     <div className="flex-1 flex relative">
                                                         {[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((hour) => (
                                                             <div
@@ -1294,7 +1288,7 @@ export default function AdminRoomBookings({
                                                             </div>
                                                         ))}
 
-                                                        {/* Booking Bars in Day Mode */}
+
                                                         {dayLanesList.map((b) => {
                                                             const clampedStart = Math.max(7, Math.min(21, b.startDec));
                                                             const clampedEnd = Math.max(clampedStart + 0.5, Math.min(21, b.endDec));
@@ -1321,7 +1315,7 @@ export default function AdminRoomBookings({
                                                                         isApproved
                                                                             ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-700/15'
                                                                             : isInUse
-                                                                            ? 'bg-blue-600 border-blue-500 text-white ring-2 ring-blue-300 shadow-blue-700/15 animate-pulse'
+                                                                            ? 'bg-blue-600 border-blue-500 text-white ring-2 ring-blue-300 shadow-blue-700/15'
                                                                             : isPending
                                                                             ? 'bg-amber-500 border-amber-400 text-white shadow-amber-700/15'
                                                                             : 'bg-slate-700 border-slate-600 text-white'
@@ -1352,7 +1346,7 @@ export default function AdminRoomBookings({
                                                                             {b.start_time} - {b.end_time}
                                                                         </span>
                                                                         {isInUse && (
-                                                                            <span className="text-[9px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded uppercase tracking-wider animate-bounce">
+                                                                            <span className="text-[9px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded uppercase tracking-wider">
                                                                                 LIVE
                                                                             </span>
                                                                         )}
@@ -1367,9 +1361,9 @@ export default function AdminRoomBookings({
                                     })}
                                 </div>
 
-                                {/* Bottom Row of Left Column: + Tambah Booking Baru */}
+
                                 <div className="flex border-t border-slate-200 bg-slate-50/70">
-                                    {/* Left Cell: + Tambah Booking Baru */}
+
                                     <div className="w-64 min-w-[256px] shrink-0 border-r border-slate-200 bg-slate-50/70 sticky left-0 z-20 px-4 py-2.5">
                                         <button
                                             type="button"
@@ -1381,7 +1375,7 @@ export default function AdminRoomBookings({
                                         </button>
                                     </div>
 
-                                    {/* Empty track extension below */}
+
                                     <div className="flex-1 flex bg-slate-50/40 min-h-[38px]">
                                         {zoomMode === 'month' ? (
                                             monthDays.map((day) => (
@@ -1406,7 +1400,7 @@ export default function AdminRoomBookings({
                         </div>
                     </div>
 
-                    {/* Bottom Status Legend & Helpful Tips */}
+
                     <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
                         <div className="flex flex-wrap items-center gap-2.5">
                             <span className="text-slate-400 font-semibold mr-1">Keterangan:</span>
@@ -1415,7 +1409,7 @@ export default function AdminRoomBookings({
                                 Disetujui
                             </span>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 font-bold border border-blue-200">
-                                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                                <span className="w-2 h-2 rounded-full bg-blue-600" />
                                 Sedang Digunakan (LIVE)
                             </span>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold border border-amber-200">
@@ -1436,7 +1430,7 @@ export default function AdminRoomBookings({
                 </div>
             )}
 
-            {/* MODAL TAMBAH BOOKING OLEH ADMIN */}
+
             <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="2xl">
                 <form onSubmit={handleCreateSubmit} className="p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -1588,7 +1582,7 @@ export default function AdminRoomBookings({
                                     Fasilitas Tambahan
                                 </label>
                                 <div className="flex items-center gap-1.5">
-                                    {/* Tombol Titik 3 di Pojok Kanan Atas Container */}
+
                                     <div className="relative">
                                         <button
                                             type="button"
@@ -1638,7 +1632,7 @@ export default function AdminRoomBookings({
                                 </div>
                             </div>
 
-                            {/* Form Input Tambah Fasilitas Baru */}
+
                             {isAddingFacility && (
                                 <div className="mb-2.5 p-2 bg-teal-50/70 border border-teal-200 rounded-xl flex items-center gap-2 animate-in fade-in duration-150">
                                     <input
@@ -1678,7 +1672,7 @@ export default function AdminRoomBookings({
                                 </div>
                             )}
 
-                            {/* Toolbar Mode Hapus */}
+
                             {isDeleteMode && (
                                 <div className="mb-2.5 p-2 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs animate-in fade-in duration-150">
                                     <div className="flex items-center gap-1.5 text-rose-800 font-semibold">
@@ -1708,7 +1702,7 @@ export default function AdminRoomBookings({
                                 </div>
                             )}
 
-                            {/* Grid Container Fasilitas */}
+
                             <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border transition ${
                                 isDeleteMode ? 'border-rose-300 ring-2 ring-rose-100 bg-rose-50/20' : 'border-slate-200/70'
                             }`}>
@@ -1796,7 +1790,7 @@ export default function AdminRoomBookings({
                 </form>
             </Modal>
 
-            {/* MODAL TOLAK PENGAJUAN BOOKING */}
+
             {rejectingBooking && (
                 <Modal show={Boolean(rejectingBooking)} onClose={() => setRejectingBooking(null)} maxWidth="md">
                     <div className="p-6">
@@ -1845,7 +1839,7 @@ export default function AdminRoomBookings({
                 </Modal>
             )}
 
-            {/* MODAL DETAIL BOOKING ADMIN */}
+
             {selectedBooking && (
                 <Modal show={Boolean(selectedBooking)} onClose={() => setSelectedBooking(null)} maxWidth="lg">
                     <div className="p-6">
@@ -2010,7 +2004,7 @@ export default function AdminRoomBookings({
                 </Modal>
             )}
 
-            {/* MODAL HAPUS BOOKING */}
+
             {deletingBooking && (
                 <Modal show={Boolean(deletingBooking)} onClose={() => setDeletingBooking(null)} maxWidth="sm">
                     <div className="p-6">

@@ -3,6 +3,7 @@ import { Head, useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import DataTable from '@/Components/DataTable';
+import Tooltip from '@/Components/Tooltip';
 import { Icon } from '@iconify/react';
 
 export default function MasterCategories({ categories = [] }) {
@@ -88,7 +89,6 @@ export default function MasterCategories({ categories = [] }) {
         });
     };
 
-    // Columns Definition for DataTable
     const columns = [
         {
             key: 'order_index',
@@ -118,9 +118,10 @@ export default function MasterCategories({ categories = [] }) {
         {
             key: 'description',
             label: 'Deskripsi',
+            align: 'justify',
             sortable: true,
             render: (row) => (
-                <span className="text-slate-500 max-w-sm truncate block">{row.description || '-'}</span>
+                <p className="text-slate-500 max-w-sm line-clamp-2 leading-relaxed text-justify">{row.description || '-'}</p>
             ),
         },
         {
@@ -156,23 +157,25 @@ export default function MasterCategories({ categories = [] }) {
             align: 'right',
             sortable: false,
             render: (row) => (
-                <div className="flex items-center justify-end gap-1">
-                    <button
-                        type="button"
-                        onClick={() => openEditModal(row)}
-                        className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition"
-                        title="Edit Kategori"
-                    >
-                        <Icon icon="ph:pencil-simple-bold" className="w-4 h-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setDeletingCategory(row)}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                        title="Hapus Kategori"
-                    >
-                        <Icon icon="ph:trash-bold" className="w-4 h-4" />
-                    </button>
+                <div className="flex items-center justify-center gap-1">
+                    <Tooltip text="Edit Kategori">
+                        <button
+                            type="button"
+                            onClick={() => openEditModal(row)}
+                            className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition"
+                        >
+                            <Icon icon="ph:pencil-simple-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip text="Hapus Kategori">
+                        <button
+                            type="button"
+                            onClick={() => setDeletingCategory(row)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        >
+                            <Icon icon="ph:trash-bold" className="w-4 h-4" />
+                        </button>
+                    </Tooltip>
                 </div>
             ),
         },
@@ -180,7 +183,7 @@ export default function MasterCategories({ categories = [] }) {
 
     return (
         <AppLayout title="Master Kategori Tiket - Admin">
-            {/* Consistent Standard Header */}
+
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="max-w-xl">
                     <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -204,7 +207,6 @@ export default function MasterCategories({ categories = [] }) {
                 </div>
             </div>
 
-            {/* DataTable */}
             <DataTable
                 columns={columns}
                 data={categories}
@@ -213,7 +215,6 @@ export default function MasterCategories({ categories = [] }) {
                 emptyMessage="Belum ada data kategori terdaftar."
             />
 
-            {/* Modal Tambah Kategori */}
             <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="md">
                 <form onSubmit={handleCreateSubmit} className="p-6">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -310,7 +311,6 @@ export default function MasterCategories({ categories = [] }) {
                 </form>
             </Modal>
 
-            {/* Modal Edit Kategori */}
             {editingCategory && (
                 <Modal show={Boolean(editingCategory)} onClose={() => setEditingCategory(null)} maxWidth="md">
                     <form onSubmit={handleEditSubmit} className="p-6">
@@ -407,7 +407,6 @@ export default function MasterCategories({ categories = [] }) {
                 </Modal>
             )}
 
-            {/* Modal Konfirmasi Hapus */}
             <Modal show={Boolean(deletingCategory)} onClose={() => setDeletingCategory(null)} maxWidth="sm">
                 <div className="p-6 text-center">
                     <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">

@@ -6,13 +6,17 @@ import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 
 export default function UserDashboard({
-    tickets = [],
+    tickets: propTickets = [],
     stats = { total: 0, open: 0, in_progress: 0, resolved: 0 },
-    categories = [],
-    urgencies = [],
-    units = [],
+    categories: propCategories = [],
+    urgencies: propUrgencies = [],
+    units: propUnits = [],
     filters = {},
 }) {
+    const tickets = Array.isArray(propTickets) ? propTickets : [];
+    const categories = Array.isArray(propCategories) ? propCategories : [];
+    const urgencies = Array.isArray(propUrgencies) ? propUrgencies : [];
+    const units = Array.isArray(propUnits) ? propUnits : [];
     const { auth } = usePage().props;
     const user = auth?.user;
 
@@ -23,7 +27,6 @@ export default function UserDashboard({
     const [categoryFilter, setCategoryFilter] = useState(filters.category_id || '');
     const [urgencyFilter, setUrgencyFilter] = useState(filters.urgency_id || '');
 
-    // Form Buat Tiket Baru
     const {
         data: newTicket,
         setData: setNewTicket,
@@ -41,7 +44,6 @@ export default function UserDashboard({
         attachments: [],
     });
 
-    // Form Balas Pesan Tiket
     const {
         data: replyData,
         setData: setReplyData,
@@ -56,14 +58,12 @@ export default function UserDashboard({
 
     const chatEndRef = useRef(null);
 
-    // Auto-scroll ke bawah saat ada pesan baru pada modal chat
     useEffect(() => {
         if (selectedTicket?.messages?.length) {
             chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [selectedTicket?.messages?.length]);
 
-    // Realtime Reverb: Percakapan Tiket Terbuka
     useEffect(() => {
         if (!selectedTicket || typeof window === 'undefined' || !window.Echo) return;
 
@@ -107,7 +107,6 @@ export default function UserDashboard({
         };
     }, [selectedTicket?.id, user?.id]);
 
-    // Realtime Reverb: Notifikasi dan Pembaruan Tiket Pengguna
     useEffect(() => {
         if (typeof window === 'undefined' || !window.Echo) return;
 
@@ -243,13 +242,12 @@ export default function UserDashboard({
         }
     };
 
-    // Sub-units matching currently selected unit
-    const selectedUnitObj = units.find((u) => u.name === newTicket.unit);
-    const availableSubUnits = selectedUnitObj?.sub_units || [];
+    const selectedUnitObj = units.find((u) => u?.name === newTicket.unit);
+    const availableSubUnits = selectedUnitObj?.sub_units || selectedUnitObj?.subUnits || [];
 
     return (
         <AppLayout title="Tiket Saya - Portal Layanan" onOpenCreateTicket={openCreateModal}>
-            {/* Consistent Standard Header */}
+
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -273,7 +271,6 @@ export default function UserDashboard({
                 </div>
             </div>
 
-            {/* Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
                     <div className="flex items-center justify-between">
@@ -316,7 +313,6 @@ export default function UserDashboard({
                 </div>
             </div>
 
-            {/* Filter & Pencarian Bar */}
             <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs mb-6 flex flex-col md:flex-row items-center justify-between gap-3">
                 <div className="relative w-full md:w-80">
                     <Icon icon="ph:magnifying-glass-bold" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -380,7 +376,6 @@ export default function UserDashboard({
                 </div>
             </div>
 
-            {/* List Tiket */}
             {tickets.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center shadow-xs">
                     <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-400 mb-3">
@@ -469,7 +464,7 @@ export default function UserDashboard({
                                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                                     : 'bg-slate-50 text-slate-600 border-slate-200'
                                             }`}
-                                            title={`Batas Akhir SLA: ${t.sla.deadline_at}`}
+                                            title={`Batas Waktu: ${t.sla.deadline_at}`}
                                         >
                                             <Icon icon="ph:timer-bold" className="w-3 h-3" />
                                             <span>{t.sla.status_label}</span>
@@ -486,7 +481,6 @@ export default function UserDashboard({
                 </div>
             )}
 
-            {/* Modal: Buat Tiket Baru */}
             <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="2xl">
                 <div className="p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -535,7 +529,6 @@ export default function UserDashboard({
                             )}
                         </div>
 
-                        {/* Pilihan Unit & Sub-Unit (Master) */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -601,7 +594,6 @@ export default function UserDashboard({
                             </div>
                         </div>
 
-                        {/* Pilihan Kategori & Urgensi (Master) */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -638,7 +630,7 @@ export default function UserDashboard({
                                     <option value="">-- Pilih Urgensi --</option>
                                     {urgencies.map((u) => (
                                         <option key={u.id} value={u.id}>
-                                            {u.name} {u.sla_hours ? `(SLA: ${u.sla_hours} Jam)` : ''}
+                                            {u.name} {u.sla_hours ? `(Target: ${u.sla_hours} Jam)` : ''}
                                         </option>
                                     ))}
                                 </select>
@@ -708,7 +700,6 @@ export default function UserDashboard({
                 </div>
             </Modal>
 
-            {/* Modal Detail & Percakapan Tiket */}
             {selectedTicket && (
                 <Modal show={Boolean(selectedTicket)} onClose={() => setSelectedTicket(null)} maxWidth="2xl">
                     <div className="p-6 flex flex-col max-h-[85vh]">
@@ -743,7 +734,7 @@ export default function UserDashboard({
                         </div>
 
                         <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
-                            {/* Banner Status Penyelesaian untuk User */}
+
                             {(selectedTicket.resolved_by || selectedTicket.status === 'resolved' || selectedTicket.status === 'closed') && (
                                 <div className="bg-emerald-50 border border-emerald-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs">
                                     <div className="flex items-center gap-3">
@@ -766,7 +757,6 @@ export default function UserDashboard({
                                 </div>
                             )}
 
-                            {/* Info Target SLA Penyelesaian */}
                             {selectedTicket.sla && (
                                 <div
                                     className={`rounded-2xl p-3.5 border flex items-center justify-between gap-3 text-xs ${
@@ -791,7 +781,7 @@ export default function UserDashboard({
                                             className="w-4 h-4 text-brand-600 shrink-0"
                                         />
                                         <span>
-                                            Target Penyelesaian SLA:{' '}
+                                            Target Penyelesaian:{' '}
                                             <strong>{selectedTicket.sla.target_hours} Jam</strong> (Batas Maksimal: {selectedTicket.sla.deadline_at})
                                         </span>
                                     </div>

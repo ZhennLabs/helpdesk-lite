@@ -6,24 +6,21 @@ import DataTable from '@/Components/DataTable';
 import { Icon } from '@iconify/react';
 
 export default function MasterUnits({ units = [] }) {
-    const [activeTab, setActiveTab] = useState('units'); // 'units' | 'subUnits'
+    const [activeTab, setActiveTab] = useState('units');
     const [sourceFilter, setSourceFilter] = useState('all');
     const [selectedUnitFilter, setSelectedUnitFilter] = useState('all');
     const [isSyncing, setIsSyncing] = useState(false);
 
-    // Accordion row expansion state for Unit Table
     const [expandedUnitIds, setExpandedUnitIds] = useState({});
 
-    // Modal States
     const [isCreateUnitModalOpen, setIsCreateUnitModalOpen] = useState(false);
     const [editingUnit, setEditingUnit] = useState(null);
     const [addingSubUnitTarget, setAddingSubUnitTarget] = useState(null);
     const [isGeneralAddSubUnitModalOpen, setIsGeneralAddSubUnitModalOpen] = useState(false);
     const [selectedUnitIdForNewSubUnit, setSelectedUnitIdForNewSubUnit] = useState('');
     const [editingSubUnit, setEditingSubUnit] = useState(null);
-    const [deletingTarget, setDeletingTarget] = useState(null); // { type: 'unit' | 'subUnit', item: obj, parentUnit?: obj }
+    const [deletingTarget, setDeletingTarget] = useState(null);
 
-    // Form Tambah Unit
     const {
         data: createUnitData,
         setData: setCreateUnitData,
@@ -37,7 +34,6 @@ export default function MasterUnits({ units = [] }) {
         sub_units: [''],
     });
 
-    // Form Edit Unit
     const {
         data: editUnitData,
         setData: setEditUnitData,
@@ -51,7 +47,6 @@ export default function MasterUnits({ units = [] }) {
         is_active: true,
     });
 
-    // Form Tambah Sub Unit
     const {
         data: createSubUnitData,
         setData: setCreateSubUnitData,
@@ -64,7 +59,6 @@ export default function MasterUnits({ units = [] }) {
         description: '',
     });
 
-    // Form Edit Sub Unit
     const {
         data: editSubUnitData,
         setData: setEditSubUnitData,
@@ -78,7 +72,6 @@ export default function MasterUnits({ units = [] }) {
         is_active: true,
     });
 
-    // Toggle expand row
     const toggleExpandUnit = (id) => {
         setExpandedUnitIds((prev) => ({
             ...prev,
@@ -86,7 +79,6 @@ export default function MasterUnits({ units = [] }) {
         }));
     };
 
-    // Sinkronisasi Unit dari RSAM API
     const handleSyncRsam = () => {
         if (isSyncing) return;
         setIsSyncing(true);
@@ -99,7 +91,6 @@ export default function MasterUnits({ units = [] }) {
         );
     };
 
-    // Sub Unit dynamic row inputs in Create Unit modal
     const handleAddSubUnitRow = () => {
         setCreateUnitData('sub_units', [...createUnitData.sub_units, '']);
     };
@@ -116,7 +107,6 @@ export default function MasterUnits({ units = [] }) {
         setCreateUnitData('sub_units', updated);
     };
 
-    // Form Submissions
     const handleCreateUnitSubmit = (e) => {
         e.preventDefault();
         postUnit('/admin/master/units', {
@@ -178,7 +168,6 @@ export default function MasterUnits({ units = [] }) {
         }
     };
 
-    // Flatten all sub units for Tab 2
     const allSubUnitsList = useMemo(() => {
         const list = [];
         units.forEach((u) => {
@@ -194,13 +183,11 @@ export default function MasterUnits({ units = [] }) {
         return list;
     }, [units]);
 
-    // Filtered data by source for Tab 1
     const filteredUnits = useMemo(() => {
         if (sourceFilter === 'all') return units;
         return units.filter((u) => u.source === sourceFilter);
     }, [units, sourceFilter]);
 
-    // Filtered data for Tab 2
     const filteredSubUnitsList = useMemo(() => {
         return allSubUnitsList.filter((item) => {
             const matchesUnit =
@@ -212,13 +199,11 @@ export default function MasterUnits({ units = [] }) {
         });
     }, [allSubUnitsList, selectedUnitFilter, sourceFilter]);
 
-    // Statistics
     const totalUnits = units.length;
     const rsamUnitsCount = units.filter((u) => u.source === 'rsam').length;
     const localUnitsCount = units.filter((u) => u.source === 'local').length;
     const totalSubUnits = allSubUnitsList.length;
 
-    // DataTable Columns for Tab 1: Unit Kerja
     const unitColumns = [
         {
             key: 'expand',
@@ -295,7 +280,7 @@ export default function MasterUnits({ units = [] }) {
                         }`}
                     >
                         <Icon icon={isRsam ? 'ph:cloud-check-bold' : 'ph:database-bold'} className="w-3 h-3" />
-                        {isRsam ? 'RSAM API' : 'Lokal'}
+                        {isRsam ? 'Terhubung' : 'Lokal'}
                     </span>
                 );
             },
@@ -386,7 +371,6 @@ export default function MasterUnits({ units = [] }) {
         },
     ];
 
-    // DataTable Columns for Tab 2: Semua Sub-Unit / Ruangan
     const subUnitColumns = [
         {
             key: 'no',
@@ -514,7 +498,7 @@ export default function MasterUnits({ units = [] }) {
 
     return (
         <AppLayout title="Master Unit & Ruangan - Admin">
-            {/* Consistent Standard Header */}
+
             <div className="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="max-w-xl">
                     <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -522,7 +506,7 @@ export default function MasterUnits({ units = [] }) {
                         <span>Master Unit & Sub Unit</span>
                     </h1>
                     <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                        Kelola unit kerja dan sub-unit/ruangan. Data dapat disinkronkan dari Helpdesk RSAM API atau ditambah secara lokal.
+                        Kelola daftar unit kerja dan sub-unit/ruangan.
                     </p>
                 </div>
 
@@ -532,13 +516,13 @@ export default function MasterUnits({ units = [] }) {
                         onClick={handleSyncRsam}
                         disabled={isSyncing}
                         className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200/90 hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs rounded-xl shadow-2xs transition active:scale-98 disabled:opacity-50 shrink-0"
-                        title="Tarik pembaruan data unit dari Helpdesk RSAM API"
+                        title="Perbarui data unit dari pusat"
                     >
                         <Icon
                             icon={isSyncing ? 'ph:spinner-bold' : 'ph:cloud-arrow-down-bold'}
                             className={`w-4 h-4 text-teal-600 shrink-0 ${isSyncing ? 'animate-spin' : ''}`}
                         />
-                        <span className="whitespace-nowrap">{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Unit RSAM'}</span>
+                        <span className="whitespace-nowrap">{isSyncing ? 'Memperbarui...' : 'Perbarui Data Unit'}</span>
                     </button>
 
                     <button
@@ -569,7 +553,6 @@ export default function MasterUnits({ units = [] }) {
                 </div>
             </div>
 
-            {/* Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
                     <div className="flex items-center justify-between">
@@ -583,7 +566,7 @@ export default function MasterUnits({ units = [] }) {
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-sky-600">Unit RSAM API</span>
+                        <span className="text-xs font-semibold text-sky-600">Unit Terhubung</span>
                         <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
                             <Icon icon="ph:cloud-check-bold" className="w-4 h-4" />
                         </div>
@@ -612,7 +595,6 @@ export default function MasterUnits({ units = [] }) {
                 </div>
             </div>
 
-            {/* Tabs Bar */}
             <div className="flex items-center gap-2 border-b border-slate-200 mb-6">
                 <button
                     type="button"
@@ -647,7 +629,6 @@ export default function MasterUnits({ units = [] }) {
                 </button>
             </div>
 
-            {/* TAB 1: DATATABLE UNIT KERJA */}
             {activeTab === 'units' && (
                 <DataTable
                     columns={unitColumns}
@@ -662,8 +643,8 @@ export default function MasterUnits({ units = [] }) {
                             className="py-1.5 px-3 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 focus:border-brand-500 focus:ring-brand-500 shadow-2xs"
                         >
                             <option value="all">Semua Sumber ({totalUnits})</option>
-                            <option value="rsam">Dari RSAM API ({rsamUnitsCount})</option>
-                            <option value="local">Lokal Database ({localUnitsCount})</option>
+                            <option value="rsam">Dari Pusat ({rsamUnitsCount})</option>
+                            <option value="local">Ditambahkan Lokal ({localUnitsCount})</option>
                         </select>
                     }
                     subRowRender={(row) => {
@@ -791,7 +772,6 @@ export default function MasterUnits({ units = [] }) {
                 />
             )}
 
-            {/* TAB 2: DATATABLE SEMUA SUB-UNIT / RUANGAN */}
             {activeTab === 'subUnits' && (
                 <DataTable
                     columns={subUnitColumns}
@@ -827,14 +807,13 @@ export default function MasterUnits({ units = [] }) {
                 />
             )}
 
-            {/* Modal: Tambah Unit Baru (Lokal) */}
             <Modal show={isCreateUnitModalOpen} onClose={() => setIsCreateUnitModalOpen(false)} maxWidth="lg">
                 <div className="p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                         <div>
                             <h3 className="text-base font-bold text-slate-900">Tambah Unit Kerja Baru</h3>
                             <p className="text-xs text-slate-500 mt-0.5">
-                                Unit ini akan disimpan ke database lokal Helpdesk Lite (source: local).
+                                Unit ini akan ditambahkan sebagai unit lokal.
                             </p>
                         </div>
                         <button
@@ -880,7 +859,6 @@ export default function MasterUnits({ units = [] }) {
                             )}
                         </div>
 
-                        {/* Initial Sub Units */}
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-xs font-bold text-slate-700">
@@ -943,14 +921,13 @@ export default function MasterUnits({ units = [] }) {
                 </div>
             </Modal>
 
-            {/* Modal: Edit Unit */}
             <Modal show={Boolean(editingUnit)} onClose={() => setEditingUnit(null)} maxWidth="md">
                 <div className="p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                         <div>
                             <h3 className="text-base font-bold text-slate-900">Edit Unit Kerja</h3>
                             <p className="text-xs text-slate-500 mt-0.5">
-                                Sumber: <span className="font-semibold text-slate-700">{editingUnit?.source === 'rsam' ? 'Tersinkron dari RSAM API' : 'Lokal Database'}</span>
+                                Sumber: <span className="font-semibold text-slate-700">{editingUnit?.source === 'rsam' ? 'Data Pusat' : 'Data Lokal'}</span>
                             </p>
                         </div>
                         <button
@@ -1025,7 +1002,6 @@ export default function MasterUnits({ units = [] }) {
                 </div>
             </Modal>
 
-            {/* Modal: Tambah Ruangan Baru (Spesifik atau Umum) */}
             <Modal
                 show={Boolean(addingSubUnitTarget) || isGeneralAddSubUnitModalOpen}
                 onClose={() => {
@@ -1132,14 +1108,13 @@ export default function MasterUnits({ units = [] }) {
                 </div>
             </Modal>
 
-            {/* Modal: Edit Sub Unit */}
             <Modal show={Boolean(editingSubUnit)} onClose={() => setEditingSubUnit(null)} maxWidth="md">
                 <div className="p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                         <div>
                             <h3 className="text-base font-bold text-slate-900">Edit Ruangan / Sub-Unit</h3>
                             <p className="text-xs text-slate-500 mt-0.5">
-                                Sumber: <span className="font-semibold text-slate-700">{editingSubUnit?.source === 'rsam' ? 'Tersinkron dari RSAM API' : 'Lokal Database'}</span>
+                                Sumber: <span className="font-semibold text-slate-700">{editingSubUnit?.source === 'rsam' ? 'Data Pusat' : 'Data Lokal'}</span>
                             </p>
                         </div>
                         <button
@@ -1214,7 +1189,6 @@ export default function MasterUnits({ units = [] }) {
                 </div>
             </Modal>
 
-            {/* Modal: Konfirmasi Hapus */}
             <Modal show={Boolean(deletingTarget)} onClose={() => setDeletingTarget(null)} maxWidth="sm">
                 <div className="p-6 text-center">
                     <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">

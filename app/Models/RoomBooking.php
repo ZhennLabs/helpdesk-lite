@@ -53,9 +53,6 @@ class RoomBooking extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    /**
-     * Generate unique booking code: BK-YYYYMMDD-XXXX
-     */
     public static function generateBookingNumber(): string
     {
         $datePrefix = 'BK-' . date('Ymd');
@@ -63,9 +60,6 @@ class RoomBooking extends Model
         return sprintf('%s-%04d', $datePrefix, $countToday + 1);
     }
 
-    /**
-     * Cari pemesanan yang bertabrakan waktu
-     */
     public static function findConflict(int $roomId, string $date, string $startTime, string $endTime, ?int $excludeBookingId = null): ?self
     {
         $query = self::where('room_id', $roomId)

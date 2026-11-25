@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Administrator Helpdesk',
                 'password' => Hash::make('password'),
                 'role' => 'admin',
-                'unit' => 'Management / IT',
+                'unit' => 'Manajemen Umum',
                 'sub_unit' => 'Pusat Kontrol',
                 'avatar_url' => 'https://ui-avatars.com/api/?name=Admin+Helpdesk&background=0D9488&color=fff&bold=true',
                 'is_active' => true,

@@ -11,9 +11,7 @@ use Inertia\Response;
 
 class MasterCategoryController extends Controller
 {
-    /**
-     * Tampilkan daftar master kategori tiket
-     */
+
     public function index(): Response
     {
         $categories = TicketCategory::withCount('tickets')
@@ -25,9 +23,6 @@ class MasterCategoryController extends Controller
         ]);
     }
 
-    /**
-     * Tambah master kategori baru
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
@@ -49,9 +44,6 @@ class MasterCategoryController extends Controller
         return redirect()->back()->with('success', 'Kategori tiket baru berhasil ditambahkan.');
     }
 
-    /**
-     * Update master kategori
-     */
     public function update(Request $request, TicketCategory $category): RedirectResponse
     {
         $request->validate([
@@ -73,13 +65,10 @@ class MasterCategoryController extends Controller
         return redirect()->back()->with('success', 'Kategori tiket berhasil diperbarui.');
     }
 
-    /**
-     * Hapus atau nonaktifkan master kategori
-     */
     public function destroy(TicketCategory $category): RedirectResponse
     {
         if ($category->tickets()->count() > 0) {
-            // Jika sudah ada tiket, ubah status aktif saja agar integritas data aman
+
             $category->update(['is_active' => !$category->is_active]);
             $status = $category->is_active ? 'diaktifkan' : 'dinonaktifkan';
             return redirect()->back()->with('success', "Kategori telah memiliki relasi tiket, status berhasil {$status}.");

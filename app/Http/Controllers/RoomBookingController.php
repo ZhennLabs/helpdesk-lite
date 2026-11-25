@@ -11,18 +11,20 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RoomBookingController extends Controller
 {
-    // katalog & jadwal peminjaman ruangan user
+    
     public function index(Request $request): Response
     {
         $selectedDate = $request->input('date', Carbon::today()->format('Y-m-d'));
 
-        // eager load bookings sekaligus biar bebas dari N+1 query
+        
         $rooms = Room::where('is_active', true)
             ->with([
                 'bookings' => function ($q) use ($selectedDate) {
@@ -67,7 +69,7 @@ class RoomBookingController extends Controller
                 ];
             });
 
-        // riwayat booking oleh user yang sedang login
+        
         $myBookings = RoomBooking::with('room')
             ->where('user_id', Auth::id())
             ->latest('booking_date')
@@ -100,7 +102,7 @@ class RoomBookingController extends Controller
                 'created_at_human' => $b->created_at->diffForHumans(),
             ]);
 
-        // timeline jadwal 1 bulan penuh
+        
         $selectedCarbon = Carbon::parse($selectedDate);
         $monthBookings = RoomBooking::with('room')
             ->whereYear('booking_date', $selectedCarbon->year)
@@ -129,7 +131,7 @@ class RoomBookingController extends Controller
                 'extra_facilities' => is_array($b->extra_facilities) ? $b->extra_facilities : [],
             ]);
 
-        // daftar unit dropdown di-cache singkat
+        
         $units = Cache::remember('active_units_list', 60, function () {
             $list = Unit::where('is_active', true)->orderBy('name')->pluck('name')->toArray();
             return !empty($list) ? $list : [
@@ -148,11 +150,11 @@ class RoomBookingController extends Controller
         ]);
     }
 
-    // ajukan booking baru
+    
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'room_id' => 'required|exists:rooms,id',
+            'room_id' => ['required', Rule::exists('rooms', 'id')->where('is_active', true)],
             'booking_date' => 'required|date|after_or_equal:today',
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i|after:start_time',
@@ -160,40 +162,49 @@ class RoomBookingController extends Controller
             'booker_name' => 'required|string|max:150',
             'booker_unit' => 'required|string|max:100',
             'booker_phone' => 'nullable|string|max:30',
-            'participants_count' => 'nullable|integer',
+            'participants_count' => 'nullable|integer|min:1',
             'description' => 'nullable|string|max:1000',
             'extra_facilities' => 'nullable|array',
         ]);
 
-        // cek bentrok jadwal sebelum disimpan
-        $conflict = RoomBooking::findConflict(
-            (int) $request->room_id,
-            $request->booking_date,
-            $request->start_time,
-            $request->end_time
-        );
+        
+        // kunci baris ruangan biar ga kejadian double booking
+        $booking = DB::transaction(function () use ($request) {
+            Room::where('id', $request->room_id)->lockForUpdate()->first();
 
-        if ($conflict) {
-            $jam = substr($conflict->start_time, 0, 5) . ' - ' . substr($conflict->end_time, 0, 5);
-            return back()->with('error', "Jadwal bentrok dengan kegiatan '{$conflict->title}' ({$jam}). Silakan pilih jam atau ruangan lain.");
+            $conflict = RoomBooking::findConflict(
+                (int) $request->room_id,
+                $request->booking_date,
+                $request->start_time,
+                $request->end_time
+            );
+
+            if ($conflict) {
+                return $conflict;
+            }
+
+            return RoomBooking::create([
+                'booking_number' => RoomBooking::generateBookingNumber(),
+                'room_id' => $request->room_id,
+                'user_id' => Auth::id(),
+                'booker_name' => $request->booker_name,
+                'booker_unit' => $request->booker_unit,
+                'booker_phone' => $request->booker_phone,
+                'title' => $request->title,
+                'description' => $request->description,
+                'participants_count' => $request->participants_count ?: 1,
+                'booking_date' => $request->booking_date,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'extra_facilities' => $request->extra_facilities ?: [],
+                'status' => 'pending',
+            ]);
+        });
+
+        if ($booking->wasRecentlyCreated === false) {
+            $jam = substr($booking->start_time, 0, 5) . ' - ' . substr($booking->end_time, 0, 5);
+            return back()->with('error', "Jadwal bentrok dengan kegiatan '{$booking->title}' ({$jam}). Silakan pilih jam atau ruangan lain.");
         }
-
-        $booking = RoomBooking::create([
-            'booking_number' => RoomBooking::generateBookingNumber(),
-            'room_id' => $request->room_id,
-            'user_id' => Auth::id(),
-            'booker_name' => $request->booker_name,
-            'booker_unit' => $request->booker_unit,
-            'booker_phone' => $request->booker_phone,
-            'title' => $request->title,
-            'description' => $request->description,
-            'participants_count' => $request->participants_count ?: 1,
-            'booking_date' => $request->booking_date,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
-            'extra_facilities' => $request->extra_facilities ?: [],
-            'status' => 'pending',
-        ]);
 
         $booking->load('room');
 
@@ -208,10 +219,10 @@ class RoomBookingController extends Controller
             ->with('success', "Pengajuan peminjaman ruangan '{$booking->room?->name}' berhasil dikirim dan menunggu konfirmasi admin.");
     }
 
-    // batalkan booking
+    
     public function cancel(RoomBooking $booking): RedirectResponse
     {
-        // pastikan cuma pemilik asli yang bisa batalkan
+        
         if ($booking->user_id !== Auth::id()) {
             return back()->with('error', 'Anda tidak memiliki hak untuk membatalkan pengajuan ini.');
         }
@@ -234,7 +245,7 @@ class RoomBookingController extends Controller
         return back()->with('success', 'Pengajuan peminjaman ruangan berhasil dibatalkan.');
     }
 
-    // cek ketersediaan via ajax
+    
     public function checkAvailability(Request $request): JsonResponse
     {
         $request->validate([

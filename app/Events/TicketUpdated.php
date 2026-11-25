@@ -18,9 +18,6 @@ class TicketUpdated implements ShouldBroadcastNow
     public string $action;
     public string $notification;
 
-    /**
-     * Create a new event instance.
-     */
     public function __construct(Ticket $ticket, string $action = 'updated', string $notification = '', ?User $actor = null)
     {
         $this->action = $action;
@@ -36,11 +33,6 @@ class TicketUpdated implements ShouldBroadcastNow
         ];
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
-     */
     public function broadcastOn(): array
     {
         return [

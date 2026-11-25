@@ -14,11 +14,7 @@ use Inertia\Response;
 
 class MasterUserController extends Controller
 {
-    /**
-     * Tampilkan halaman Master Pengguna:
-     * - Daftar Admin (bisa tambah / edit / hapus)
-     * - Daftar User (read-only, bersumber dari API RSAM)
-     */
+
     public function index(Request $request): Response
     {
         $admins = User::where('role', 'admin')
@@ -48,9 +44,6 @@ class MasterUserController extends Controller
         ]);
     }
 
-    /**
-     * Tambah akun Administrator baru (Khusus Role Admin lokal)
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
@@ -65,7 +58,7 @@ class MasterUserController extends Controller
             'name' => $request->name,
             'email' => strtolower(trim($request->email)),
             'password' => Hash::make($request->password),
-            'role' => 'admin', // Selalu admin
+            'role' => 'admin',
             'unit' => $request->unit ?: 'Management / IT',
             'sub_unit' => $request->sub_unit ?: 'Helpdesk Admin',
             'is_active' => true,
@@ -74,9 +67,6 @@ class MasterUserController extends Controller
         return redirect()->back()->with('success', 'Akun Administrator baru berhasil ditambahkan.');
     }
 
-    /**
-     * Update akun Administrator
-     */
     public function update(Request $request, User $user): RedirectResponse
     {
         if ($user->role !== 'admin') {
@@ -109,9 +99,6 @@ class MasterUserController extends Controller
         return redirect()->back()->with('success', 'Data administrator berhasil diperbarui.');
     }
 
-    /**
-     * Hapus akun Administrator
-     */
     public function destroy(User $user): RedirectResponse
     {
         if ($user->role !== 'admin') {
@@ -126,12 +113,9 @@ class MasterUserController extends Controller
         return redirect()->back()->with('success', 'Akun administrator berhasil dihapus.');
     }
 
-    /**
-     * Sinkronisasi penarikan daftar user dari API Helpdesk RSAM
-     */
     public function syncFromRsam(): RedirectResponse
     {
-        $remote = RsamApiService::fetchRemoteUsers(['limit' => 200]);
+        $remote = RsamApiService::fetchRemoteUsers(['limit' => 500]);
 
         if (!empty($remote['data']) && is_array($remote['data'])) {
             $count = 0;

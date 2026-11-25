@@ -8,19 +8,15 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Jadwal penarikan email masuk otomatis setiap 1 menit
 Schedule::command('helpdesk:fetch-emails')->everyMinute();
 
-// Jadwal pembersihan dan optimasi storage otomatis setiap hari pukul 02:00 dini hari
 Schedule::command('helpdesk:cleanup --days=180 --logs-days=30')
     ->dailyAt('02:00')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/cleanup.log'));
 
-// Jadwal pembersihan token reset password expired
 Schedule::command('auth:clear-resets')->daily();
 
-// Jadwal pengingat masa aktif kontrak dokumen library (H-7) setiap hari pukul 08:00
 Schedule::command('library:remind-contracts --days=7')
     ->dailyAt('08:00')
     ->withoutOverlapping();
