@@ -343,48 +343,30 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                     {isSlaDropdownOpen && (
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setIsSlaDropdownOpen(false)} />
-                                            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white p-3 shadow-2xl border border-slate-200 z-30 animate-in fade-in zoom-in-95 duration-100">
-                                                <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-100">
+                                            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white p-3.5 shadow-xl border border-slate-200 z-30 animate-in fade-in zoom-in-95 duration-100">
+                                                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon="ph:timer-bold" className="w-4 h-4 text-brand-600" />
-                                                        <span className="text-xs font-extrabold text-slate-900">Peringatan Tenggat SLA</span>
+                                                        <span className="text-xs font-bold text-slate-900">Pengingat Batas Waktu</span>
                                                     </div>
                                                     {(slaAlerts?.urgent_count || 0) > 0 ? (
-                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                                             slaAlerts.overdue_count > 0 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'
                                                         }`}>
                                                             {slaAlerts.urgent_count} Perlu Tindakan
                                                         </span>
                                                     ) : (
-                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                            Semua Aman
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">
+                                                            Aman
                                                         </span>
                                                     )}
                                                 </div>
 
-                                                {/* Desktop Notification Request Banner */}
-                                                {typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted' && (
-                                                    <div className="mb-2 p-2 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center justify-between text-[11px] text-amber-900">
-                                                        <span className="truncate pr-2">Aktifkan pop-up desktop?</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={requestNotificationPermission}
-                                                            className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition shrink-0"
-                                                        >
-                                                            Izinkan
-                                                        </button>
-                                                    </div>
-                                                )}
-
                                                 {/* List of urgent tickets */}
-                                                <div className="max-h-72 overflow-y-auto space-y-1.5 pr-0.5">
+                                                <div className="max-h-72 overflow-y-auto space-y-1.5">
                                                     {(slaAlerts?.tickets || []).length === 0 ? (
-                                                        <div className="py-6 px-4 text-center text-xs text-slate-400">
-                                                            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
-                                                                <Icon icon="ph:check-circle-bold" className="w-5 h-5" />
-                                                            </div>
-                                                            <p className="font-bold text-slate-700">Semua Tiket Sesuai Target SLA</p>
-                                                            <p className="text-[11px] text-slate-400 mt-0.5">Tidak ada tiket yang terlambat atau mendekati batas waktu.</p>
+                                                        <div className="py-5 px-3 text-center text-xs text-slate-500">
+                                                            Belum ada tiket yang mendekati atau melewati batas waktu.
                                                         </div>
                                                     ) : (
                                                         slaAlerts.tickets.map((t) => (
@@ -399,21 +381,21 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                                                 }`}
                                                             >
                                                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                                                    <span className="font-mono text-xs font-extrabold text-slate-900">
+                                                                    <span className="font-mono text-xs font-bold text-slate-900">
                                                                         {t.ticket_number}
                                                                     </span>
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                                                         t.sla?.is_overdue
-                                                                            ? 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse'
-                                                                            : 'bg-amber-100 text-amber-800 border-amber-200'
+                                                                            ? 'bg-rose-100 text-rose-800'
+                                                                            : 'bg-amber-100 text-amber-800'
                                                                     }`}>
                                                                         {t.sla?.status_label}
                                                                     </span>
                                                                 </div>
-                                                                <p className="text-xs font-bold text-slate-800 truncate">{t.subject}</p>
+                                                                <p className="text-xs font-semibold text-slate-800 truncate">{t.subject}</p>
                                                                 <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
                                                                     <span className="truncate">{t.reporter_name} ({t.reporter_unit})</span>
-                                                                    <span className="font-semibold text-slate-500 shrink-0">Batas: {t.sla?.deadline_at}</span>
+                                                                    <span className="font-medium text-slate-500 shrink-0">Batas: {t.sla?.deadline_at}</span>
                                                                 </div>
                                                             </Link>
                                                         ))
@@ -428,9 +410,15 @@ export default function AppLayout({ title = 'Helpdesk', children, onOpenCreateTi
                                                     >
                                                         Buka Dashboard &rarr;
                                                     </Link>
-                                                    <span className="text-[10px] text-slate-400 font-medium">
-                                                        Kalkulasi SLA Otomatis
-                                                    </span>
+                                                    {typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={requestNotificationPermission}
+                                                            className="text-[11px] font-semibold text-slate-500 hover:text-brand-600 transition"
+                                                        >
+                                                            Aktifkan notifikasi
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </>

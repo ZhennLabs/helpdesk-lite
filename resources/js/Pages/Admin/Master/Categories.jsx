@@ -11,13 +11,13 @@ export default function MasterCategories({ categories = [] }) {
     const [deletingCategory, setDeletingCategory] = useState(null);
 
     const iconPresets = [
-        { label: 'Hardware/PC', icon: 'ph:desktop-tower-bold' },
-        { label: 'Software/Aplikasi', icon: 'ph:app-window-bold' },
-        { label: 'Jaringan/Wi-Fi', icon: 'ph:wifi-high-bold' },
-        { label: 'Akun/Akses', icon: 'ph:key-bold' },
-        { label: 'Printer/Alat', icon: 'ph:printer-bold' },
         { label: 'Fasilitas/Gedung', icon: 'ph:buildings-bold' },
-        { label: 'Keamanan/Sistem', icon: 'ph:shield-check-bold' },
+        { label: 'Perbaikan/Alat', icon: 'ph:wrench-bold' },
+        { label: 'Listrik/Utilitas', icon: 'ph:lightning-bold' },
+        { label: 'Kebersihan', icon: 'ph:sparkle-bold' },
+        { label: 'Keamanan', icon: 'ph:shield-check-bold' },
+        { label: 'Administrasi', icon: 'ph:file-text-bold' },
+        { label: 'Pelayanan', icon: 'ph:chats-circle-bold' },
         { label: 'Lain-lain', icon: 'ph:dots-three-circle-bold' },
     ];
 
@@ -42,7 +42,7 @@ export default function MasterCategories({ categories = [] }) {
         setFormData({
             name: '',
             description: '',
-            icon: 'ph:desktop-tower-bold',
+            icon: 'ph:buildings-bold',
             order_index: categories.length + 1,
             is_active: true,
         });
@@ -232,7 +232,7 @@ export default function MasterCategories({ categories = [] }) {
                                 type="text"
                                 value={formData.name}
                                 onChange={(e) => setFormData('name', e.target.value)}
-                                placeholder="Contoh: Hardware, Software, Jaringan"
+                                placeholder="Contoh: Fasilitas, Peralatan, Kebersihan"
                                 required
                                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:border-brand-500 focus:ring-brand-500"
                             />

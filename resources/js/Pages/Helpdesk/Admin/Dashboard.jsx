@@ -28,19 +28,33 @@ ChartJS.register(
     Legend
 );
 
+const toArray = (val, fallback = []) => {
+    if (Array.isArray(val)) return val;
+    if (val && typeof val === 'object') return Object.values(val);
+    return fallback;
+};
+
 export default function AdminDashboard({
-    tickets = [],
+    tickets: rawTickets = [],
     stats = { total: 0, open: 0, in_progress: 0, resolved: 0 },
-    categories = [],
-    urgencies = [],
+    categories: rawCategories = [],
+    urgencies: rawUrgencies = [],
     technicians = [],
-    units = [],
-    monthly_chart = [],
-    category_distribution = [],
-    available_years = [2026],
+    units: rawUnits = [],
+    monthly_chart: rawMonthlyChart = [],
+    category_distribution: rawCategoryDistribution = [],
+    available_years: rawAvailableYears = [2026],
     selected_year = 2026,
     filters = {},
 }) {
+    const tickets = toArray(rawTickets);
+    const categories = toArray(rawCategories);
+    const urgencies = toArray(rawUrgencies);
+    const units = toArray(rawUnits);
+    const monthly_chart = toArray(rawMonthlyChart);
+    const category_distribution = toArray(rawCategoryDistribution);
+    const available_years = toArray(rawAvailableYears, [2026]);
+
     const { auth, slaAlerts } = usePage().props;
     const user = auth?.user;
 

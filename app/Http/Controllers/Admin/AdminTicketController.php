@@ -195,56 +195,71 @@ class AdminTicketController extends Controller
     // log & riwayat tiket
     public function logs(Request $request): Response
     {
-        $query = Ticket::with([
-            'category:id,name,icon',
-            'urgency:id,name,color,level',
-            'assignedTo:id,name',
-            'resolvedBy:id,name',
-        ])->latest('created_at');
+        $messages = TicketMessage::with([
+            'ticket:id,ticket_number,subject,reporter_unit,reporter_sub_unit,category_id',
+            'ticket.category:id,name',
+            'user:id,name,role,avatar_url',
+        ])->latest('created_at')->take(500)->get();
 
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        }
+        $todayCount = 0;
+        $statusCount = 0;
+        $assignCount = 0;
+        $messageCount = 0;
 
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
+        $logs = $messages->map(function ($msg) use (&$todayCount, &$statusCount, &$assignCount, &$messageCount) {
+            $text = (string) $msg->message;
+            $lower = strtolower($text);
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
+            if (str_starts_with($text, '[Update Status:')) {
+                $type = 'status';
+                $typeLabel = 'Pembaruan Status';
+                $statusCount++;
+            } elseif (str_contains($lower, 'ditugaskan') || str_contains($lower, 'penugasan')) {
+                $type = 'assign';
+                $typeLabel = 'Penugasan Petugas';
+                $assignCount++;
+            } else {
+                $type = 'message';
+                $typeLabel = 'Tanggapan Pesan';
+                $messageCount++;
+            }
 
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
+            if ($msg->created_at?->isToday()) {
+                $todayCount++;
+            }
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('ticket_number', 'like', "%{$search}%")
-                  ->orWhere('subject', 'like', "%{$search}%")
-                  ->orWhere('reporter_name', 'like', "%{$search}%")
-                  ->orWhere('reporter_unit', 'like', "%{$search}%");
-            });
-        }
+            return [
+                'id' => $msg->id,
+                'type' => $type,
+                'type_label' => $typeLabel,
+                'message' => $text,
+                'attachments' => $msg->attachments ?? [],
+                'created_at' => $msg->created_at?->translatedFormat('d M Y, H:i') ?? '-',
+                'created_at_human' => $msg->created_at?->diffForHumans() ?? '-',
+                'timestamp' => $msg->created_at?->timestamp ?? 0,
+                'ticket_number' => $msg->ticket?->ticket_number ?? '-',
+                'ticket_subject' => $msg->ticket?->subject ?? '-',
+                'ticket_unit' => $msg->ticket?->reporter_unit ?? '-',
+                'ticket_sub_unit' => $msg->ticket?->reporter_sub_unit ?? '-',
+                'category' => $msg->ticket?->category ? ['name' => $msg->ticket->category->name] : null,
+                'user' => $msg->user ? [
+                    'name' => $msg->user->name,
+                    'role' => $msg->user->role,
+                    'avatar_url' => $msg->user->avatar_url,
+                ] : null,
+            ];
+        })->values();
 
-        $logs = $query->paginate(25)->through(fn ($t) => [
-            'id' => $t->id,
-            'ticket_number' => $t->ticket_number,
-            'subject' => $t->subject,
-            'reporter' => $t->reporter_name . ' (' . ($t->reporter_unit ?: '-') . ')',
-            'category' => $t->category?->name,
-            'urgency' => $t->urgency?->name,
-            'status' => $t->status,
-            'assigned_to' => $t->assignedTo?->name ?: '-',
-            'resolved_by' => $t->resolvedBy?->name ?: '-',
-            'created_at' => $t->created_at->translatedFormat('d M Y, H:i'),
-            'resolved_at' => $t->resolved_at?->translatedFormat('d M Y, H:i') ?: '-',
-        ]);
-
-        return Inertia::render('Helpdesk/Admin/Logs', [
+        return Inertia::render('Admin/Logs', [
             'logs' => $logs,
-            'filters' => $request->only(['status', 'category_id', 'date_from', 'date_to', 'search']),
+            'stats' => [
+                'total' => $logs->count(),
+                'today' => $todayCount,
+                'status_changes' => $statusCount,
+                'assignments' => $assignCount,
+                'messages' => $messageCount,
+            ],
+            'filters' => $request->only(['type']),
         ]);
     }
 
