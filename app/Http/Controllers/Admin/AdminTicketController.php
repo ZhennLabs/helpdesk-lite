@@ -167,27 +167,27 @@ class AdminTicketController extends Controller
             'sla_urgent' => $slaUrgentCount,
         ];
 
-        // master data di-cache singkat
-        $categories = Cache::remember('active_ticket_categories', 60, fn () => 
-            TicketCategory::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'icon'])
+        // master data di-cache singkat sebagai array murni
+        $categories = Cache::remember('active_ticket_categories_v3', 60, fn () => 
+            TicketCategory::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'icon'])->toArray()
         );
-        $urgencies = Cache::remember('active_ticket_urgencies', 60, fn () => 
-            TicketUrgency::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'color', 'level', 'sla_hours'])
+        $urgencies = Cache::remember('active_ticket_urgencies_v3', 60, fn () => 
+            TicketUrgency::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'color', 'level', 'sla_hours'])->toArray()
         );
-        $units = Cache::remember('all_ticket_units', 60, fn () => 
-            Ticket::distinct()->whereNotNull('reporter_unit')->where('reporter_unit', '!=', '')->orderBy('reporter_unit')->pluck('reporter_unit')
+        $units = Cache::remember('all_ticket_units_v3', 60, fn () => 
+            Ticket::distinct()->whereNotNull('reporter_unit')->where('reporter_unit', '!=', '')->orderBy('reporter_unit')->pluck('reporter_unit')->toArray()
         );
-        $admins = Cache::remember('active_admins_list', 60, fn () => 
-            User::where('role', 'admin')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar_url'])
+        $admins = Cache::remember('active_admins_list_v3', 60, fn () => 
+            User::where('role', 'admin')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar_url'])->toArray()
         );
 
         return Inertia::render('Helpdesk/Admin/Dashboard', [
-            'tickets' => $tickets,
+            'tickets' => $tickets->values()->all(),
             'stats' => $stats,
-            'categories' => $categories,
-            'urgencies' => $urgencies,
-            'units' => $units,
-            'admins' => $admins,
+            'categories' => is_array($categories) ? $categories : [],
+            'urgencies' => is_array($urgencies) ? $urgencies : [],
+            'units' => is_array($units) ? $units : [],
+            'admins' => is_array($admins) ? $admins : [],
             'filters' => $request->only(['status', 'category_id', 'urgency_id', 'unit', 'search']),
         ]);
     }
@@ -355,3 +355,4 @@ class AdminTicketController extends Controller
         return redirect()->back()->with('success', 'Balasan berhasil dikirim.');
     }
 }
+

@@ -6,13 +6,17 @@ import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 
 export default function UserDashboard({
-    tickets = [],
+    tickets: propTickets = [],
     stats = { total: 0, open: 0, in_progress: 0, resolved: 0 },
-    categories = [],
-    urgencies = [],
-    units = [],
+    categories: propCategories = [],
+    urgencies: propUrgencies = [],
+    units: propUnits = [],
     filters = {},
 }) {
+    const tickets = Array.isArray(propTickets) ? propTickets : [];
+    const categories = Array.isArray(propCategories) ? propCategories : [];
+    const urgencies = Array.isArray(propUrgencies) ? propUrgencies : [];
+    const units = Array.isArray(propUnits) ? propUnits : [];
     const { auth } = usePage().props;
     const user = auth?.user;
 
@@ -244,8 +248,8 @@ export default function UserDashboard({
     };
 
     // Sub-units matching currently selected unit
-    const selectedUnitObj = units.find((u) => u.name === newTicket.unit);
-    const availableSubUnits = selectedUnitObj?.sub_units || [];
+    const selectedUnitObj = units.find((u) => u?.name === newTicket.unit);
+    const availableSubUnits = selectedUnitObj?.sub_units || selectedUnitObj?.subUnits || [];
 
     return (
         <AppLayout title="Tiket Saya - Portal Layanan" onOpenCreateTicket={openCreateModal}>

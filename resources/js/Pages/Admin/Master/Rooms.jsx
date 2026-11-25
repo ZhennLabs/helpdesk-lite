@@ -97,6 +97,11 @@ export default function MasterRooms({ rooms = [] }) {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 resetCreate();
+                toast.success('Ruangan baru berhasil disimpan ke database!');
+            },
+            onError: (errs) => {
+                const firstErr = Object.values(errs)[0];
+                toast.error(firstErr || 'Gagal menyimpan ruangan. Periksa kembali form isian.');
             },
         });
     };
@@ -108,6 +113,11 @@ export default function MasterRooms({ rooms = [] }) {
             onSuccess: () => {
                 setEditingRoom(null);
                 resetEdit();
+                toast.success('Data ruangan berhasil diperbarui!');
+            },
+            onError: (errs) => {
+                const firstErr = Object.values(errs)[0];
+                toast.error(firstErr || 'Gagal memperbarui data ruangan.');
             },
         });
     };
@@ -117,6 +127,10 @@ export default function MasterRooms({ rooms = [] }) {
         router.delete(`/admin/master/rooms/${deletingRoom.id}`, {
             onSuccess: () => {
                 setDeletingRoom(null);
+                toast.success('Ruangan berhasil dihapus.');
+            },
+            onError: () => {
+                toast.error('Gagal menghapus ruangan.');
             },
         });
     };
@@ -501,6 +515,7 @@ export default function MasterRooms({ rooms = [] }) {
                                     placeholder="R-MEDIK-01"
                                     className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"
                                 />
+                                {createErrors.code && <p className="text-[11px] text-red-600 mt-1">{createErrors.code}</p>}
                             </div>
                         </div>
 
@@ -515,6 +530,7 @@ export default function MasterRooms({ rooms = [] }) {
                                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"
                                     required
                                 />
+                                {createErrors.capacity && <p className="text-[11px] text-red-600 mt-1">{createErrors.capacity}</p>}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Lokasi / Lantai Gedung *</label>
@@ -526,6 +542,7 @@ export default function MasterRooms({ rooms = [] }) {
                                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"
                                     required
                                 />
+                                {createErrors.location && <p className="text-[11px] text-red-600 mt-1">{createErrors.location}</p>}
                             </div>
                         </div>
 
@@ -558,7 +575,7 @@ export default function MasterRooms({ rooms = [] }) {
                             <div className="sm:col-span-2">
                                 <label className="block text-xs font-bold text-slate-700 mb-1">URL Foto Sampul Ruangan</label>
                                 <input
-                                    type="url"
+                                    type="text"
                                     value={createData.image_url}
                                     onChange={(e) => setCreateData('image_url', e.target.value)}
                                     placeholder="https://..."
@@ -718,7 +735,7 @@ export default function MasterRooms({ rooms = [] }) {
                                 <div className="sm:col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1">URL Foto Sampul</label>
                                     <input
-                                        type="url"
+                                        type="text"
                                         value={editData.image_url}
                                         onChange={(e) => setEditData('image_url', e.target.value)}
                                         className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-brand-500"

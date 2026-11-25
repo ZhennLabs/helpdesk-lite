@@ -133,24 +133,24 @@ class TicketController extends Controller
             'resolved' => (int) ($statsRow->resolved_count ?? 0),
         ];
 
-        // master data di-cache singkat biar ga bolak balik query db
-        $categories = Cache::remember('active_ticket_categories', 60, fn () => 
-            TicketCategory::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'icon', 'description'])
+        // master data di-cache singkat sebagai array murni agar aman diserialisasi
+        $categories = Cache::remember('active_ticket_categories_v3', 60, fn () => 
+            TicketCategory::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'icon', 'description'])->toArray()
         );
-        $urgencies = Cache::remember('active_ticket_urgencies', 60, fn () => 
-            TicketUrgency::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'color', 'level', 'sla_hours', 'description'])
+        $urgencies = Cache::remember('active_ticket_urgencies_v3', 60, fn () => 
+            TicketUrgency::where('is_active', true)->orderBy('order_index')->get(['id', 'name', 'color', 'level', 'sla_hours', 'description'])->toArray()
         );
-        $units = Cache::remember('active_units_tree', 60, fn () => 
+        $units = Cache::remember('active_units_tree_v3', 60, fn () => 
             Unit::with(['subUnits' => fn ($q) => $q->where('is_active', true)->orderBy('name', 'asc')])
-                ->where('is_active', true)->orderBy('name', 'asc')->get(['id', 'name', 'source'])
+                ->where('is_active', true)->orderBy('name', 'asc')->get(['id', 'name', 'source'])->toArray()
         );
 
         return Inertia::render('Helpdesk/User/Dashboard', [
-            'tickets' => $tickets,
+            'tickets' => $tickets->values()->all(),
             'stats' => $stats,
-            'categories' => $categories,
-            'urgencies' => $urgencies,
-            'units' => $units,
+            'categories' => is_array($categories) ? $categories : [],
+            'urgencies' => is_array($urgencies) ? $urgencies : [],
+            'units' => is_array($units) ? $units : [],
             'filters' => $request->only(['status', 'category_id', 'urgency_id', 'search']),
         ]);
     }
@@ -289,3 +289,4 @@ class TicketController extends Controller
         return redirect()->back()->with('success', 'Pesan tanggapan berhasil dikirim.');
     }
 }
+

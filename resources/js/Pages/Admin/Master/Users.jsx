@@ -4,6 +4,7 @@ import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import DataTable from '@/Components/DataTable';
 import { Icon } from '@iconify/react';
+import { toast } from 'sonner';
 
 export default function MasterUsers({ admins = [], regularUsers = [] }) {
     const [activeTab, setActiveTab] = useState('admins'); // 'admins' | 'users'
@@ -51,6 +52,11 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
             onSuccess: () => {
                 setIsCreateAdminModalOpen(false);
                 resetCreateForm();
+                toast.success('Akun Administrator baru berhasil ditambahkan!');
+            },
+            onError: (errs) => {
+                const first = Object.values(errs)[0];
+                toast.error(first || 'Gagal menambahkan administrator.');
             },
         });
     };
@@ -74,6 +80,11 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
             onSuccess: () => {
                 setEditingAdmin(null);
                 resetEditForm();
+                toast.success('Data administrator berhasil diperbarui!');
+            },
+            onError: (errs) => {
+                const first = Object.values(errs)[0];
+                toast.error(first || 'Gagal memperbarui administrator.');
             },
         });
     };
@@ -81,7 +92,13 @@ export default function MasterUsers({ admins = [], regularUsers = [] }) {
     const handleConfirmDelete = () => {
         if (!deletingAdmin) return;
         router.delete(`/admin/master/users/${deletingAdmin.id}`, {
-            onSuccess: () => setDeletingAdmin(null),
+            onSuccess: () => {
+                setDeletingAdmin(null);
+                toast.success('Administrator berhasil dihapus.');
+            },
+            onError: () => {
+                toast.error('Gagal menghapus administrator.');
+            },
         });
     };
 

@@ -57,7 +57,7 @@ class MasterRoomController extends Controller
             'location' => 'required|string|max:150',
             'facilities' => 'nullable|array',
             'description' => 'nullable|string|max:1000',
-            'image_url' => 'nullable|url|max:500',
+            'image_url' => 'nullable|string|max:500',
             'color' => 'nullable|string|max:20',
             'is_active' => 'boolean',
         ]);
@@ -94,7 +94,7 @@ class MasterRoomController extends Controller
             'location' => 'required|string|max:150',
             'facilities' => 'nullable|array',
             'description' => 'nullable|string|max:1000',
-            'image_url' => 'nullable|url|max:500',
+            'image_url' => 'nullable|string|max:500',
             'color' => 'nullable|string|max:20',
             'is_active' => 'boolean',
         ]);

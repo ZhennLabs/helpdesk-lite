@@ -5,9 +5,9 @@
     "scripts":  {
                     "build":  "vite build",
                     "dev":  "vite",
-                    "serve":  "php artisan serve --host=127.0.0.1 --port=8001",
-                    "reverb":  "php artisan reverb:start --host=127.0.0.1 --port=8082",
-                    "start:all":  "node -e \"const fs=require(\u0027fs\u0027);if(fs.existsSync(\u0027public/hot\u0027))fs.unlinkSync(\u0027public/hot\u0027)\" \u0026\u0026 concurrently \"php artisan serve --host=127.0.0.1 --port=8001\" \"php artisan reverb:start --host=127.0.0.1 --port=8082\""
+                    "serve":  "php artisan serve --host=0.0.0.0 --port=8001",
+                    "reverb":  "php artisan reverb:start --host=0.0.0.0 --port=8082",
+                    "start:all":  "node -e \"const fs=require(\u0027fs\u0027);if(fs.existsSync(\u0027public/hot\u0027))fs.unlinkSync(\u0027public/hot\u0027)\" \u0026\u0026 concurrently \"php artisan serve --host=0.0.0.0 --port=8001\" \"php artisan reverb:start --host=0.0.0.0 --port=8082\""
                 },
     "devDependencies":  {
                             "@headlessui/react":  "^2.0.0",

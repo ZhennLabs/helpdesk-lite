@@ -60,13 +60,14 @@ class RsamApiService
         }
     }
 
-    // sync akun user dari rsam ke db lokal (role selalu user)
+    // sync akun user dari rsam ke db lokal (seluruh tarikan pegawai RSAM berstatus role 'user')
     public static function syncOrCreateUser(array $remoteUser): User
     {
         $email = strtolower(trim($remoteUser['email']));
         $existing = User::where('email', $email)->first();
 
-        $role = ($existing && $existing->role === 'admin') ? 'admin' : 'user';
+        // jika akun lokal tersebut admin bawaan (admin@helpdesk.local), pertahankan admin. Selain itu semua pegawai rsam adalah role 'user'
+        $role = ($existing && $existing->email === 'admin@helpdesk.local') ? 'admin' : 'user';
 
         $userData = [
             'rsam_user_id' => $remoteUser['id'] ?? null,

@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 
 export default function Login({ status }) {
     const [showPassword, setShowPassword] = useState(false);
 
+    const getCsrfToken = () => {
+        if (typeof document !== 'undefined') {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+        return '';
+    };
+
     const { data, setData, post, processing, errors, reset } = useForm({
+        _token: getCsrfToken(),
         email: '',
         password: '',
         remember: true,
@@ -13,6 +21,7 @@ export default function Login({ status }) {
 
     const submit = (e) => {
         e.preventDefault();
+        data._token = getCsrfToken();
         post('/login', {
             onFinish: () => reset('password'),
         });
@@ -50,6 +59,7 @@ export default function Login({ status }) {
                         </div>
                     )}
                     <form onSubmit={submit} className="space-y-4">
+                        <input type="hidden" name="_token" value={data._token} />
                         <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1.5">
                                 Alamat Email

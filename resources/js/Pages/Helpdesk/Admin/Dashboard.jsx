@@ -29,18 +29,23 @@ ChartJS.register(
 );
 
 export default function AdminDashboard({
-    tickets = [],
+    tickets: propTickets = [],
     stats = { total: 0, open: 0, in_progress: 0, resolved: 0 },
-    categories = [],
-    urgencies = [],
-    technicians = [],
-    units = [],
+    categories: propCategories = [],
+    urgencies: propUrgencies = [],
+    technicians: propTechnicians = [],
+    units: propUnits = [],
     monthly_chart = [],
     category_distribution = [],
     available_years = [2026],
     selected_year = 2026,
     filters = {},
 }) {
+    const tickets = Array.isArray(propTickets) ? propTickets : [];
+    const categories = Array.isArray(propCategories) ? propCategories : [];
+    const urgencies = Array.isArray(propUrgencies) ? propUrgencies : [];
+    const technicians = Array.isArray(propTechnicians) ? propTechnicians : [];
+    const units = Array.isArray(propUnits) ? propUnits : [];
     const { auth, slaAlerts } = usePage().props;
     const user = auth?.user;
 
